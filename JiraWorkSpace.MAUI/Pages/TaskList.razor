@@ -7,29 +7,30 @@
 
 <Form @ref="_form" Model="searchFormModel" Name="advanced_search" Class="ant-advanced-search-form">
     <Row Gutter="24">
-        <GridCol Span="6">
-            <FormItem Label="项目">
-                <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
-            </FormItem>
-        </GridCol>
-        <GridCol Span="6">
-            <FormItem Label="Sprint">
-                <Input @bind-Value="@context.Sprint" Placeholder="placeholder" />
-            </FormItem>
-        </GridCol>
-        <GridCol Span="6">
-            <FormItem Label="类型">
-                <Input @bind-Value="@context.IssueType" Placeholder="placeholder" />
-            </FormItem>
-        </GridCol>
-        <GridCol Span="6">
-            <FormItem Label="经办人">
-                <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
-            </FormItem>
-        </GridCol>
-
         @if (_expand)
         {
+            <GridCol Span="6">
+                <FormItem Label="项目">
+                    <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="Sprint">
+                    <Input @bind-Value="@context.Sprint" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="类型">
+                    <Input @bind-Value="@context.IssueType" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="经办人">
+                    <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+
+
             <GridCol Span="6">
                 <FormItem Label="状态">
                     <Input @bind-Value="@context.Status" Placeholder="placeholder" />
