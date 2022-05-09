@@ -1,3 +1,15 @@
 /JiraWorkSpace.MAUI/.vs
 /JiraWorkSpace.MAUI/bin
 /JiraWorkSpace.MAUI/obj
+
+/JiraWorkSpace.Application/bin
+/JiraWorkSpace.Application/obj
+
+/JiraWorkSpace.Application.Contracts/bin
+/JiraWorkSpace.Application.Contracts/obj
+
+/JiraWorkSpace.Domain/bin
+/JiraWorkSpace.Domain/obj
+
+/JiraWorkSpace.Domain.Shared/bin
+/JiraWorkSpace.Domain.Shared/obj

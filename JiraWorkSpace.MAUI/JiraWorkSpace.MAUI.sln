@@ -4,6 +4,14 @@ VisualStudioVersion = 17.0.31611.283
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.MAUI", "JiraWorkSpace.MAUI.csproj", "{D24DFDC9-8579-45A2-9340-D37FF3E896EE}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Domain.Shared", "..\JiraWorkSpace.Domain.Shared\JiraWorkSpace.Domain.Shared.csproj", "{AD0C6D28-7285-4DF9-8CF5-6F8E68F843ED}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Domain", "..\JiraWorkSpace.Domain\JiraWorkSpace.Domain.csproj", "{D4521B53-6DD9-4D13-A99D-9CE4B118201E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Application.Contracts", "..\JiraWorkSpace.Application.Contracts\JiraWorkSpace.Application.Contracts.csproj", "{05300E68-7428-40C8-9B29-0685440BC805}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Application", "..\JiraWorkSpace.Application\JiraWorkSpace.Application.csproj", "{CC777536-DB9C-405B-9295-5022706A563C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,6 +24,22 @@ Global
 		{D24DFDC9-8579-45A2-9340-D37FF3E896EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D24DFDC9-8579-45A2-9340-D37FF3E896EE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D24DFDC9-8579-45A2-9340-D37FF3E896EE}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{AD0C6D28-7285-4DF9-8CF5-6F8E68F843ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD0C6D28-7285-4DF9-8CF5-6F8E68F843ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD0C6D28-7285-4DF9-8CF5-6F8E68F843ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD0C6D28-7285-4DF9-8CF5-6F8E68F843ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4521B53-6DD9-4D13-A99D-9CE4B118201E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4521B53-6DD9-4D13-A99D-9CE4B118201E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4521B53-6DD9-4D13-A99D-9CE4B118201E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4521B53-6DD9-4D13-A99D-9CE4B118201E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05300E68-7428-40C8-9B29-0685440BC805}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05300E68-7428-40C8-9B29-0685440BC805}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05300E68-7428-40C8-9B29-0685440BC805}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05300E68-7428-40C8-9B29-0685440BC805}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC777536-DB9C-405B-9295-5022706A563C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC777536-DB9C-405B-9295-5022706A563C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC777536-DB9C-405B-9295-5022706A563C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC777536-DB9C-405B-9295-5022706A563C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
