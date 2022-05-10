@@ -20,7 +20,6 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("状态")]
         public string name { get; set; }
         /// <summary>
         /// 

@@ -5,6 +5,8 @@
 @using System.Text.Json;
 @using AntDesign.TableModels
 @using JiraWorkSpace.MAUI.Data
+@using System.Text
+@using System.Diagnostics
 
 <Form @ref="_form" Model="searchFormModel" Name="advanced_search" Class="ant-advanced-search-form">
     <Row Gutter="24">
@@ -61,10 +63,12 @@
        @bind-PageSize="_pageSize"
        @bind-SelectedRows="selectedRows"
        OnChange="OnChange">
-    <Selection Key="@(context.Key.ToString())" />
-    <Column Field="@context.Key" />
+    <Selection Key="@(context.Key)" />
+    <Column Field="@context.Key" Sortable />
+    <Column @bind-Field="@context.IssueType" Sortable />
     <Column @bind-Field="@context.Summary" Sortable />
-    <Column @bind-Field="@context.Status" />
+    <Column @bind-Field="@context.Assignee" />
+    <Column @bind-Field="@context.Status" Sortable />
     <ActionColumn>
         <Space>
             <SpaceItem><Button Danger OnClick="()=>Delete(context.Key)">Delete</Button></SpaceItem>
@@ -156,6 +160,8 @@
 
     string ApiBaseUrl = "https://zhangy.atlassian.net/rest/api";
     int ApiVersion = 2;
+    string uName = "cool.zhangyy@gmail.com";
+    string password = "M0ww754e6wMYof45H2GV2DBC";
 
     bool _expand = false;
     AntDesign.Internal.IForm _form;
@@ -181,18 +187,48 @@
         Console.WriteLine(JsonSerializer.Serialize(queryModel));
     }
 
+    
+
+    private string GetEncodedCredentials()
+    {
+        string mergedCredentials = string.Format("{0}:{1}", uName, password);
+        byte[] byteCredentials = UTF8Encoding.UTF8.GetBytes(mergedCredentials);
+        return Convert.ToBase64String(byteCredentials);
+    }
+
+    public class DateTimeConverterUsingDateTimeParse : System.Text.Json.Serialization.JsonConverter<DateTime>
+    {
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            Debug.Assert(typeToConvert == typeof(DateTime));
+            return DateTime.Parse(reader.GetString() ?? string.Empty);
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
     public Task<List<SearchItemModel>> GetIssueListAsync(int pageIndex, int pageSize)
     {
         JiraSearchRootDto rootDto = null;
         try
         {
-            string apiUrl = ApiBaseUrl + "/" + ApiVersion + "/" + "search?jql=";
+            var resStr = "";
+
+            string apiUrl = ApiBaseUrl + "/" + ApiVersion + "/" + "search?jql=issuetype in standardIssueTypes() order by created DESC";
             var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", "Basic " + GetEncodedCredentials());
             Task<string> resTaskStr = client.GetStringAsync(apiUrl);
             resTaskStr.Wait();
+            resStr = resTaskStr.Result;
 
-            var resStr = new JiraApi(ApiBaseUrl + "/" + ApiVersion + "/", "", "").DoQuery("issue", "JIRAW-1");
-            rootDto = JsonSerializer.Deserialize<JiraSearchRootDto>(resStr);
+            //var resStr = new JiraApi(ApiBaseUrl + "/" + ApiVersion + "/", uName, password).DoQuery("search", "?jql=");
+
+            JsonSerializerOptions options = new JsonSerializerOptions();
+            options.Converters.Add(new DateTimeConverterUsingDateTimeParse());
+            rootDto = JsonSerializer.Deserialize<JiraSearchRootDto>(resStr, options);
         }
         catch (Exception ex)
         {
@@ -204,10 +240,10 @@
                 return new SearchItemModel
                     {
                         Key = issue.key,
-                        IssueType = issue.fields.issuetype.name,
-                        Status = issue.fields.status.name,
+                        IssueType = issue.fields.issuetype?.name,
+                        Status = issue.fields.status?.name,
                         Summary = issue.fields.summary,
-                        Assignee = issue.fields.assignee.name
+                        Assignee = issue.fields.assignee?.name
                     };
             }).ToList());
     }

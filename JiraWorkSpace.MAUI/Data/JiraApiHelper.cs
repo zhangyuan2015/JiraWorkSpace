@@ -97,10 +97,10 @@ namespace JiraWorkSpace.MAUI.Data
         string data = null,
         string method = "GET")
         {
-            string url = string.Format("{0}{1}/", BaseURL, resource.ToString());
+            string url = string.Format("{0}{1}", BaseURL, resource.ToString());
             if (argument != null)
             {
-                url = string.Format("{0}{1}/", url, argument);
+                url = string.Format("{0}{1}", url, argument);
             }
             HttpWebRequest request = WebRequest.Create(url) as HttpWebRequest;
             request.ContentType = "application/json";

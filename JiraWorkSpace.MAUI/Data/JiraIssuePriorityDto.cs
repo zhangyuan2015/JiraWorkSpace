@@ -15,7 +15,6 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("优先级")]
         public string name { get; set; }
         /// <summary>
         /// 

@@ -32,6 +32,6 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        public string subtask { get; set; }
+        public bool subtask { get; set; }
     }
 }

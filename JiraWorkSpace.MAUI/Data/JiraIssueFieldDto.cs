@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace JiraWorkSpace.MAUI.Data
 {
@@ -7,25 +8,21 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("概要")]
         public string summary { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("描述")]
         public string description { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("创建时间")]
         public DateTime created { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("更新时间")]
         public DateTime updated { get; set; }
 
         /// <summary>

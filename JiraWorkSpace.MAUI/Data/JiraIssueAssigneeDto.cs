@@ -11,7 +11,6 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("经办人")]
         public string name { get; set; }
         /// <summary>
         /// 
@@ -29,7 +28,6 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        [DisplayName("经办人")]
         public string displayName { get; set; }
 
         /// <summary>
