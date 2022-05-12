@@ -58,28 +58,42 @@
 <Table @ref="table"
        TItem="SearchItemModel"
        DataSource="@itemList"
-       Total="_total"
-       @bind-PageIndex="_pageIndex"
-       @bind-PageSize="_pageSize"
-       @bind-SelectedRows="selectedRows"
-       OnChange="OnChange">
-    <Selection Key="@(context.Key)" />
-    <Column Field="@context.Key" Sortable />
-    <Column @bind-Field="@context.IssueType" Sortable />
-    <Column @bind-Field="@context.Summary" Sortable />
-    <Column @bind-Field="@context.Assignee" />
-    <Column @bind-Field="@context.Status" Sortable />
-    <ActionColumn>
-        <Space>
-            <SpaceItem><Button Danger OnClick="()=>Delete(context.Key)">Delete</Button></SpaceItem>
-        </Space>
-    </ActionColumn>
+       Size=TableSize.Small>
+    <ChildContent>
+        <Selection Key="@(context.Key)" />
+        <Column Field="@context.Key" Sortable />
+        <Column @bind-Field="@context.IssueType" Sortable />
+        <Column @bind-Field="@context.Summary" Sortable />
+        <Column @bind-Field="@context.Assignee" />
+        <Column @bind-Field="@context.Status" Sortable />
+        <ActionColumn>
+            <Space>
+                <SpaceItem><Button Danger OnClick="()=>Delete(context.Key)">Delete</Button></SpaceItem>
+            </Space>
+        </ActionColumn>
+    </ChildContent>
+
+    <PaginationTemplate>
+        <div style="padding-top:10px;">
+            <Row>
+                <Col Span="8">
+                共 @total 个
+                </Col>
+                <Col Span="8" Offset="8">
+                <Pagination Class="my-custom-pagination"
+                            Total="@total"
+                            PageSize="pageSize"
+                            Current="pageIndex"
+                            ShowSizeChanger="@true"
+                            OnChange="OnChange" />
+                </Col>
+            </Row>
+        </div>
+    </PaginationTemplate>
 </Table>
 
 <br />
-<p>PageIndex: @_pageIndex | PageSize: @_pageSize | Total: @_total</p>
 
-<br />
 <h5>selections:</h5>
 @if (selectedRows != null && selectedRows.Any())
 {
@@ -90,10 +104,6 @@
         <Tag @key="selected.Key" Closable OnClose="e=>RemoveSelection(selected.Key)">@selected.Key - @selected.Summary</Tag>
     }
 }
-
-<Button OnClick="()=> { _pageIndex--; }">Previous page</Button>
-<Button OnClick="()=> { _pageIndex++; }">Next Page</Button>
-
 
 <style>
     [data-theme='compact'] .ant-advanced-search-form,
@@ -158,10 +168,11 @@
         public string Assignee { get; set; }
     }
 
-    string ApiBaseUrl = "https://zhangy.atlassian.net/rest/api";
-    int ApiVersion = 2;
-    string uName = "";
-    string password = "";
+    ConfigModel config;
+    string ApiBaseUrl;
+    string ApiVersion;
+    string uName;
+    string password;
 
     bool _expand = false;
     AntDesign.Internal.IForm _form;
@@ -169,8 +180,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        itemList = await GetIssueListAsync(1, 50);
-        _total = 50;
+        config = ConfigHelper.GetConfig();
+        ApiBaseUrl = $"{config.JiraDomain}/rest/api";
+        ApiVersion = config.JiraApiVersion;
+        uName = config.JiraUaseName;
+        password = config.JiraApiToken;
+
+        itemList = await GetIssueListAsync(pageIndex, pageSize);
+        total = itemList.Count;
     }
 
     List<SearchItemModel> itemList;
@@ -178,16 +195,22 @@
     IEnumerable<SearchItemModel> selectedRows;
     ITable table;
 
-    int _pageIndex = 1;
-    int _pageSize = 10;
-    int _total = 0;
+    int pageIndex = 1;
+    int pageSize = 10;
+    int total = 0;
 
-    public async Task OnChange(QueryModel<SearchItemModel> queryModel)
+    public async Task OnChange(PaginationEventArgs args)
     {
-        Console.WriteLine(JsonSerializer.Serialize(queryModel));
-    }
+        if (pageIndex != args.Page)
+        {
+            pageIndex = args.Page;
+        }
 
-    
+        if (pageSize != args.PageSize)
+        {
+            pageSize = args.PageSize;
+        }
+    }
 
     private string GetEncodedCredentials()
     {
@@ -257,6 +280,6 @@
     private void Delete(string key)
     {
         itemList = itemList.Where(x => x.Key != key).ToList();
-        _total = itemList.Count;
+        total = itemList.Count;
     }
 }

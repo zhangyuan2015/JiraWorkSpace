@@ -1,8 +1,9 @@
 ﻿@page "/setup"
 
 @using System.Text.Json;
+@using JiraWorkSpace.MAUI.Data
 
-<Form Model="@model"
+<Form Model="@configModel"
       LabelColSpan="6"
       WrapperColSpan="12"
       OnFinish="OnFinish"
@@ -10,33 +11,47 @@
     <FormItem Label="AD">
         <Input @bind-Value="@context.AD" />
     </FormItem>
-    <FormItem Label="JiraApiUrl">
-        <Input @bind-Value="@context.JiraApiUrl" />
+    <FormItem Label="Code Directory">
+        <Input @bind-Value="@context.CodeDirectory" />
+    </FormItem>
+    <FormItem Label="Jira Domain">
+        <Input @bind-Value="@context.JiraDomain" />
+    </FormItem>
+    <FormItem Label="Jira Api Version">
+        <Input @bind-Value="@context.JiraApiVersion" />
+    </FormItem>
+    <FormItem Label="Jira UaseName">
+        <Input @bind-Value="@context.JiraUaseName" />
+    </FormItem>
+    <FormItem Label="Jira Domain">
+        <Input @bind-Value="@context.JiraApiToken" />
     </FormItem>
     <FormItem WrapperColOffset="6" WrapperColSpan="12">
-        <Button HtmlType="submit">
-            Submit
+        <Button Type="@ButtonType.Primary" HtmlType="submit">
+            保存
         </Button>
     </FormItem>
 </Form>
 
 @code
 {
-    public class Model
+    private ConfigModel configModel;
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
     {
-        public string AD { get; set; }
-        public string JiraApiUrl { get; set; }
+        configModel = ConfigHelper.GetConfig();
     }
-
-    private Model model = new Model();
 
     private void OnFinish(EditContext editContext)
     {
-        Console.WriteLine($"Success:{JsonSerializer.Serialize(model)}");
+        File.WriteAllText($"{System.AppDomain.CurrentDomain.BaseDirectory}\\_c.json", JsonSerializer.Serialize(configModel));
     }
 
     private void OnFinishFailed(EditContext editContext)
     {
-        Console.WriteLine($"Failed:{JsonSerializer.Serialize(model)}");
+        Console.WriteLine($"Failed:{JsonSerializer.Serialize(configModel)}");
     }
 }
