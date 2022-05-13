@@ -1,4 +1,4 @@
-﻿@page "/tasklist"
+﻿@page "/task"
 
 @using System.ComponentModel
 @using System.ComponentModel.DataAnnotations;
@@ -180,7 +180,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        config = ConfigHelper.GetConfig();
+        config = JiraWorkSpace.MAUI.Data.ConfigService.GetConfig();
         ApiBaseUrl = $"{config.JiraDomain}/rest/api";
         ApiVersion = config.JiraApiVersion;
         uName = config.JiraUaseName;

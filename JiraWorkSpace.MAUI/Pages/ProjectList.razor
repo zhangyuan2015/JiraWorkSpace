@@ -1,0 +1,164 @@
+﻿@page "/project"
+
+@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations;
+@using System.Text.Json;
+@using AntDesign.TableModels
+@using JiraWorkSpace.MAUI.Data
+@using System.Text
+@using System.Diagnostics
+
+<Form @ref="_form" Name="advanced_search">
+    <Row Gutter="24">
+        <GridCol Span="6">
+            <FormItem Label="项目">
+                <Input @bind-Value="@SearchProjectName" Placeholder="ProjectName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <Button Type="primary">Add</Button>
+            <Button Type="primary" HtmlType="submit">Search</Button>
+            <Button Style="margin: 0 8px;" OnClick="()=>{_form?.Reset();}">Clear</Button>
+        </GridCol>
+    </Row>
+</Form>
+
+<Table @ref="table"
+       TItem="SearchItemModel"
+       DataSource="@itemList"
+       Size=TableSize.Small>
+    <ChildContent>
+        <Selection Key="@(context.ProjectName)" />
+        <Column Field="@context.ProjectName" Sortable />
+        <Column @bind-Field="@context.CodeDirectory" Sortable />
+        <Column @bind-Field="@context.GitUrl" Sortable />
+        <ActionColumn>
+            <Space>
+                <SpaceItem><Button Danger OnClick="()=>Delete(context.ProjectName)">Delete</Button></SpaceItem>
+            </Space>
+        </ActionColumn>
+    </ChildContent>
+
+    <PaginationTemplate>
+        <div style="padding-top:10px;">
+            <Row>
+                <Col Span="8">
+                共 @total 个
+                </Col>
+                <Col Span="8" Offset="8">
+                <Pagination Class="my-custom-pagination"
+                            Total="@total"
+                            PageSize="pageSize"
+                            Current="pageIndex"
+                            ShowSizeChanger="@true"
+                            OnChange="OnChange" />
+                </Col>
+            </Row>
+        </div>
+    </PaginationTemplate>
+</Table>
+
+<br />
+
+<h5>selections:</h5>
+@if (selectedRows != null && selectedRows.Any())
+{
+    <Button Danger Size="small" OnClick="@(e => { selectedRows = null; })">Clear</Button>
+
+    @foreach (var selected in selectedRows)
+    {
+        <Tag @key="selected.ProjectName" Closable OnClose="e=>RemoveSelection(selected.ProjectName)">@selected.ProjectName</Tag>
+    }
+}
+
+@code {
+    public string SearchProjectName { get; set; }
+
+    public class SearchItemModel
+    {
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("项目名")]
+        public string ProjectName { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("代码目录")]
+        public string CodeDirectory { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("Git地址")]
+        public string GitUrl { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("环境集合")]
+        public List<EnvironmentModel> EnvironmentList { get; set; }
+    }
+
+    AntDesign.Internal.IForm _form;
+
+    List<SearchItemModel> itemList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        itemList = await GetProjectListAsync(pageIndex, pageSize);
+        total = itemList.Count;
+    }
+
+    IEnumerable<SearchItemModel> selectedRows;
+    ITable table;
+
+    int pageIndex = 1;
+    int pageSize = 10;
+    int total = 0;
+
+    public async Task OnChange(PaginationEventArgs args)
+    {
+        if (pageIndex != args.Page)
+        {
+            pageIndex = args.Page;
+        }
+
+        if (pageSize != args.PageSize)
+        {
+            pageSize = args.PageSize;
+        }
+
+        itemList = await GetProjectListAsync(pageIndex, pageSize);
+        total = itemList.Count;
+    }
+
+    public Task<List<SearchItemModel>> GetProjectListAsync(int pageIndex, int pageSize)
+    {
+        var projectList = ProjectService.GetList();
+
+        return Task.FromResult(projectList.Skip((pageIndex - 1) * pageSize).Take(pageSize).Select(project =>
+            {
+                return new SearchItemModel
+                    {
+                        ProjectName = project.ProjectName,
+                        CodeDirectory = project.CodeDirectory,
+                        GitUrl = project.GitUrl,
+                        EnvironmentList = project.EnvironmentList
+                    };
+            }).ToList());
+    }
+
+    public void RemoveSelection(string key)
+    {
+        var selected = selectedRows.Where(x => x.ProjectName != key);
+        selectedRows = selected;
+    }
+
+    private void Delete(string key)
+    {
+        itemList = itemList.Where(x => x.ProjectName != key).ToList();
+        total = itemList.Count;
+    }
+}

@@ -1,11 +1,11 @@
-﻿@page "/setup"
+﻿@page "/project/setup"
 
 @using System.Text.Json;
 @using JiraWorkSpace.MAUI.Data
 
 <Form Model="@configModel"
       OnFinish="OnFinish"
-      OnFinishFailed="OnFinishFailed">
+      OnFinishFailed="OnFinishFailed" >
     <Divider Orientation="left">基本信息</Divider>
     <Row Gutter="24">
         <GridCol Span="8">
@@ -72,7 +72,7 @@
 
     private void OnFinish(EditContext editContext)
     {
-        JiraWorkSpace.MAUI.Data.ConfigService.Save(configModel);
+        File.WriteAllText($"{System.AppDomain.CurrentDomain.BaseDirectory}\\_c.json", JsonSerializer.Serialize(configModel));
     }
 
     private void OnFinishFailed(EditContext editContext)

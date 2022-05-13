@@ -3,10 +3,11 @@
 <Layout Class="layout">
     <Header>
         <div class="logo" />
-        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" DefaultSelectedKeys=@(new[]{"1"})>
-            <MenuItem Key="1" RouterLink="index">首页</MenuItem>
-            <MenuItem Key="2" RouterLink="tasklist">任务列表</MenuItem>
-            <MenuItem Key="3" RouterLink="setup">设置</MenuItem>
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" DefaultSelectedKeys=@(new[]{"index"})>
+            <MenuItem Key="index" RouterLink="index">首页</MenuItem>
+            <MenuItem Key="task" RouterLink="task">任务</MenuItem>
+            <MenuItem Key="project" RouterLink="project">项目</MenuItem>
+            <MenuItem Key="setup" RouterLink="setup">设置</MenuItem>
         </Menu>
     </Header>
     <Content Style="padding: 0 50px;">
