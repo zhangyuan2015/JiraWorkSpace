@@ -2,34 +2,34 @@
 
 namespace JiraWorkSpace.MAUI.Data
 {
-    public static class ConfigService
+    public class ConfigService<T>
     {
-        private static readonly string filePath = $"{AppDomain.CurrentDomain.BaseDirectory}\\_{nameof(ConfigModel)}.json";
+        readonly string ConfigKey;
 
-        private static ConfigModel Config;
-
-        public static ConfigModel GetConfig()
+        public ConfigService(string configKey)
         {
-            if (Config == null)
-                Config = JsonSerializer.Deserialize<ConfigModel>(File.ReadAllText(filePath));
-            return Config;
+            ConfigKey = configKey;
         }
 
-        public static void Save(ConfigModel config)
+        private string GetConfigFilePath()
         {
-            File.WriteAllText(filePath, JsonSerializer.Serialize(Config));
-            Config = config;
+            return $"{AppDomain.CurrentDomain.BaseDirectory}\\_{ConfigKey}.json";
         }
-    }
 
-    public class ConfigModel
-    {
-        public string AD { get; set; }
-        public string CodeDirectory { get; set; }
-        public string BranchRule { get; set; }
-        public string JiraDomain { get; set; }
-        public string JiraUaseName { get; set; }
-        public string JiraApiToken { get; set; }
-        public string JiraApiVersion { get; set; }
+        public T GetConfig()
+        {
+            string configFilePath = GetConfigFilePath();
+            if (File.Exists(configFilePath))
+            {
+                return JsonSerializer.Deserialize<T>(File.ReadAllText(configFilePath));
+            }
+            return default;
+        }
+
+        public void Save(T configData)
+        {
+            string configFilePath = GetConfigFilePath();
+            File.WriteAllText(configFilePath, JsonSerializer.Serialize(configData));
+        }
     }
 }

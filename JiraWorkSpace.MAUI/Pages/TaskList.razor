@@ -7,8 +7,9 @@
 @using JiraWorkSpace.MAUI.Data
 @using System.Text
 @using System.Diagnostics
+@using JiraWorkSpace.MAUI.Data.Setup
 
-<Form @ref="_form" Model="searchFormModel" Name="advanced_search" Class="ant-advanced-search-form">
+<Form Model="searchFormModel" @ref="_form" Name="advanced_search">
     <Row Gutter="24">
         @if (_expand)
         {
@@ -105,26 +106,6 @@
     }
 }
 
-<style>
-    [data-theme='compact'] .ant-advanced-search-form,
-    .ant-advanced-search-form {
-        padding: 24px;
-        background: #fbfbfb;
-        border: 1px solid #d9d9d9;
-        border-radius: 2px;
-    }
-
-        [data-theme='compact'] .ant-advanced-search-form .ant-form-item,
-        .ant-advanced-search-form .ant-form-item {
-            display: flex;
-        }
-
-        [data-theme='compact'] .ant-advanced-search-form .ant-form-item-control-wrapper,
-        .ant-advanced-search-form .ant-form-item-control-wrapper {
-            flex: 1;
-        }
-</style>
-
 @code {
     public class SearchFormModel
     {
@@ -168,7 +149,9 @@
         public string Assignee { get; set; }
     }
 
-    ConfigModel config;
+    SetupModel config;
+    private JiraWorkSpace.MAUI.Data.ConfigService<SetupModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel));
+
     string ApiBaseUrl;
     string ApiVersion;
     string uName;
@@ -180,7 +163,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        config = JiraWorkSpace.MAUI.Data.ConfigService.GetConfig();
+        config = configService.GetConfig();
         ApiBaseUrl = $"{config.JiraDomain}/rest/api";
         ApiVersion = config.JiraApiVersion;
         uName = config.JiraUaseName;
