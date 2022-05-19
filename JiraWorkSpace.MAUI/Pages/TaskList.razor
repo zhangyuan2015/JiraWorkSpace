@@ -163,7 +163,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        config = configService.GetConfig();
+        config = configService.GetConfig() ?? new SetupModel();
+
         ApiBaseUrl = $"{config.JiraDomain}/rest/api";
         ApiVersion = config.JiraApiVersion;
         uName = config.JiraUaseName;
@@ -241,7 +242,7 @@
             Console.WriteLine($"Failed:{ex.Message}");
         }
 
-        return Task.FromResult(rootDto.issues.Select(issue =>
+        return Task.FromResult((rootDto?.issues ?? new List<JiraIssueDto>()).Select(issue =>
             {
                 return new SearchItemModel
                     {

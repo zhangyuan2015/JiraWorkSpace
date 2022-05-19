@@ -3,7 +3,6 @@
     public class SetupModel
     {
         public string AD { get; set; }
-        public string CodeDirectory { get; set; }
         public string BranchRule { get; set; }
         public string JiraDomain { get; set; }
         public string JiraUaseName { get; set; }

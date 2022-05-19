@@ -18,11 +18,6 @@
     <Divider Orientation="left">代码配置</Divider>
     <Row Gutter="24">
         <GridCol Span="8">
-            <FormItem Label="Code Directory">
-                <Input @bind-Value="@context.CodeDirectory" />
-            </FormItem>
-        </GridCol>
-        <GridCol Span="8">
             <FormItem Label="Branch Rule" Help="{JIRAKEY}-{AD}-{MMdd}-BranchName">
                 <Input @bind-Value="@context.BranchRule" />
             </FormItem>
@@ -70,9 +65,7 @@
     /// <returns></returns>
     protected override async Task OnInitializedAsync()
     {
-        setupModel = configService.GetConfig();
-        if (setupModel == null)
-            setupModel = new SetupModel();
+        setupModel = configService.GetConfig() ?? new SetupModel();
     }
 
     private void OnFinish(EditContext editContext)

@@ -8,6 +8,7 @@
 @using System.Text
 @using System.Diagnostics
 @using JiraWorkSpace.MAUI.Data.Project
+@inject NavigationManager NavigationManager
 
 <Form Model="searchFormModel" @ref="_form" Name="advanced_search">
     <Row Gutter="24">
@@ -17,7 +18,7 @@
             </FormItem>
         </GridCol>
         <GridCol Span="6">
-            <Button Type="primary">Add</Button>
+            <Button Type="primary" HtmlType="button"  OnClick="NavigateToAdd">Add</Button>
             <Button Type="primary" HtmlType="submit">Search</Button>
             <Button Style="margin: 0 8px;" OnClick="()=>{_form?.Reset();}">Clear</Button>
         </GridCol>
@@ -25,7 +26,7 @@
 </Form>
 
 <Table @ref="table"
-       TItem="SearchItemModel"
+       TItem="ProjectModel"
        DataSource="@itemList"
        Size=TableSize.Small>
     <ChildContent>
@@ -78,45 +79,23 @@
         public string ProjectName { get; set; }
     }
 
-    public class SearchItemModel
-    {
-        /// <summary>
-        ///
-        /// </summary>
-        [DisplayName("项目名")]
-        public string ProjectName { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        [DisplayName("代码目录")]
-        public string CodeDirectory { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        [DisplayName("Git地址")]
-        public string GitUrl { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        [DisplayName("环境集合")]
-        public List<EnvironmentModel> EnvironmentList { get; set; }
-    }
-
     AntDesign.Internal.IForm _form;
     SearchFormModel searchFormModel = new SearchFormModel();
-    List<SearchItemModel> itemList;
+    List<ProjectModel> itemList;
 
     private JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>> configService = new JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>>(nameof(ProjectModel));
 
-    IEnumerable<SearchItemModel> selectedRows;
+    IEnumerable<ProjectModel> selectedRows;
     ITable table;
 
     int pageIndex = 1;
     int pageSize = 10;
     int total = 0;
+
+    private void NavigateToAdd()
+    {
+        NavigationManager.NavigateTo("/project/setup", false);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,18 +103,9 @@
         total = itemList.Count;
     }
 
-    public Task<List<SearchItemModel>> GetProjectListAsync(int pageIndex, int pageSize)
+    public Task<List<ProjectModel>> GetProjectListAsync(int pageIndex, int pageSize)
     {
-        return Task.FromResult((configService.GetConfig() ?? new List<ProjectModel>()).Skip((pageIndex - 1) * pageSize).Take(pageSize).Select(project =>
-            {
-                return new SearchItemModel
-                    {
-                        ProjectName = project.ProjectName,
-                        CodeDirectory = project.CodeDirectory,
-                        GitUrl = project.GitUrl,
-                        EnvironmentList = project.EnvironmentList
-                    };
-            }).ToList());
+        return Task.FromResult((configService.GetConfig() ?? new List<ProjectModel>()).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList());
     }
 
     public async Task OnChange(PaginationEventArgs args)
@@ -162,7 +132,8 @@
 
     private void Delete(string key)
     {
-        itemList = itemList.Where(x => x.ProjectName != key).ToList();
+        itemList.RemoveAll(x => x.ProjectName == key);
         total = itemList.Count;
+        configService.Save(itemList);
     }
 }
