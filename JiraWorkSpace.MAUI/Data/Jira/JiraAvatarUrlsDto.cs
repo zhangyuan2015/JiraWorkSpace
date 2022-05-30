@@ -1,4 +1,4 @@
-﻿namespace JiraWorkSpace.MAUI.Data
+﻿namespace JiraWorkSpace.MAUI.Data.Jira
 {
     public class JiraAvatarUrlsDto
     {

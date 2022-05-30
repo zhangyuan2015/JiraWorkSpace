@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Text;
 
-namespace JiraWorkSpace.MAUI.Data
+namespace JiraWorkSpace.MAUI.Data.Jira
 {
     public class JiraApi
     {

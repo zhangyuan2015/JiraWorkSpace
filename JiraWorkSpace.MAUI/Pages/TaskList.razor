@@ -4,7 +4,7 @@
 @using System.ComponentModel.DataAnnotations;
 @using System.Text.Json;
 @using AntDesign.TableModels
-@using JiraWorkSpace.MAUI.Data
+@using JiraWorkSpace.MAUI.Data.Jira
 @using System.Text
 @using System.Diagnostics
 @using JiraWorkSpace.MAUI.Data.Setup
@@ -163,7 +163,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        config = configService.GetConfig() ?? new SetupModel();
+        config = configService.GetEntity() ?? new SetupModel();
 
         ApiBaseUrl = $"{config.JiraDomain}/rest/api";
         ApiVersion = config.JiraApiVersion;

@@ -16,7 +16,7 @@ namespace JiraWorkSpace.MAUI.Data
             return $"{AppDomain.CurrentDomain.BaseDirectory}\\_{ConfigKey}.json";
         }
 
-        public T GetConfig()
+        public T GetEntity()
         {
             string configFilePath = GetConfigFilePath();
             if (File.Exists(configFilePath))
@@ -24,6 +24,22 @@ namespace JiraWorkSpace.MAUI.Data
                 return JsonSerializer.Deserialize<T>(File.ReadAllText(configFilePath));
             }
             return default;
+        }
+
+        public List<T> GetEntityList()
+        {
+            string configFilePath = GetConfigFilePath();
+            if (File.Exists(configFilePath))
+            {
+                return JsonSerializer.Deserialize<List<T>>(File.ReadAllText(configFilePath));
+            }
+            return default;
+        }
+
+        public void Save(List<T> configData)
+        {
+            string configFilePath = GetConfigFilePath();
+            File.WriteAllText(configFilePath, JsonSerializer.Serialize(configData));
         }
 
         public void Save(T configData)

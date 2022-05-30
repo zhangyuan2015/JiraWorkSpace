@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
 
-namespace JiraWorkSpace.MAUI.Data
+namespace JiraWorkSpace.MAUI.Data.Jira
 {
-    public class JiraIssuePriorityDto
+    public class JiraIssueStatusDto
     {
         /// <summary>
         /// 
@@ -11,7 +11,12 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
+        public string description { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
         public string iconUrl { get; set; }
+
         /// <summary>
         /// 
         /// </summary>

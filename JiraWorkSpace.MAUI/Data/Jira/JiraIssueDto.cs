@@ -4,10 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JiraWorkSpace.MAUI.Data
+namespace JiraWorkSpace.MAUI.Data.Jira
 {
-    public class JiraIssueSubTaskDto
+    public class JiraIssueDto
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        public string expand { get; set; }
         /// <summary>
         /// 
         /// </summary>
@@ -15,12 +19,11 @@ namespace JiraWorkSpace.MAUI.Data
         /// <summary>
         /// 
         /// </summary>
-        public string key { get; set; }
+        public string self { get; set; }
         /// <summary>
         /// 
         /// </summary>
-        public string self { get; set; }
-        
+        public string key { get; set; }
         /// <summary>
         /// 
         /// </summary>

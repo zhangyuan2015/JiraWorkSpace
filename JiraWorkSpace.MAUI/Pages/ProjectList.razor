@@ -3,12 +3,14 @@
 @using System.ComponentModel
 @using System.ComponentModel.DataAnnotations;
 @using System.Text.Json;
+@using System.Linq;
 @using AntDesign.TableModels
 @using JiraWorkSpace.MAUI.Data
 @using System.Text
 @using System.Diagnostics
 @using JiraWorkSpace.MAUI.Data.Project
 @inject NavigationManager NavigationManager
+@inject MessageService _message
 
 <Form Model="searchFormModel" @ref="_form" Name="advanced_search">
     <Row Gutter="24">
@@ -18,9 +20,8 @@
             </FormItem>
         </GridCol>
         <GridCol Span="6">
-            <Button Type="primary" HtmlType="button"  OnClick="NavigateToAdd">Add</Button>
-            <Button Type="primary" HtmlType="submit">Search</Button>
-            <Button Style="margin: 0 8px;" OnClick="()=>{_form?.Reset();}">Clear</Button>
+            <Button Type="primary" HtmlType="button" OnClick="Search">Search</Button>
+            <Button Type="primary" HtmlType="button" OnClick="NavigateToAdd">Add</Button>
         </GridCol>
     </Row>
 </Form>
@@ -30,13 +31,23 @@
        DataSource="@itemList"
        Size=TableSize.Small>
     <ChildContent>
-        <Selection Key="@(context.ProjectName)" />
-        <Column Field="@context.ProjectName" Sortable />
+        <Selection Key="@(context.Id)" />
+        <Column @bind-Field="@context.ProjectName" Sortable />
         <Column @bind-Field="@context.CodeDirectory" Sortable />
-        <Column @bind-Field="@context.GitUrl" Sortable />
+        <Column @bind-Field="@context.GitUrl" Sortable>
+            <Row>
+                <Col Span="18"><a href="@context.GitUrl" target="_blank">@context.GitUrl</a></Col>
+                <Col Span="6"><Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag></Col>
+            </Row>
+        </Column>
         <ActionColumn>
             <Space>
-                <SpaceItem><Button Danger OnClick="()=>Delete(context.ProjectName)">Delete</Button></SpaceItem>
+                <SpaceItem><Button OnClick="()=>Edit(context.Id)">Edit</Button></SpaceItem>
+                <SpaceItem>
+                    <Popconfirm Placement="@Placement.TopRight" Title="确认删除？" OnConfirm="()=>Delete(context.Id)">
+                        <Button Danger>Delete</Button>
+                    </Popconfirm>
+                </SpaceItem>
             </Space>
         </ActionColumn>
     </ChildContent>
@@ -60,19 +71,6 @@
     </PaginationTemplate>
 </Table>
 
-<br />
-
-<h5>selections:</h5>
-@if (selectedRows != null && selectedRows.Any())
-{
-    <Button Danger Size="small" OnClick="@(e => { selectedRows = null; })">Clear</Button>
-
-    @foreach (var selected in selectedRows)
-    {
-        <Tag @key="selected.ProjectName" Closable OnClose="e=>RemoveSelection(selected.ProjectName)">@selected.ProjectName</Tag>
-    }
-}
-
 @code {
     public class SearchFormModel
     {
@@ -83,9 +81,8 @@
     SearchFormModel searchFormModel = new SearchFormModel();
     List<ProjectModel> itemList;
 
-    private JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>> configService = new JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>>(nameof(ProjectModel));
+    private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
 
-    IEnumerable<ProjectModel> selectedRows;
     ITable table;
 
     int pageIndex = 1;
@@ -94,18 +91,39 @@
 
     private void NavigateToAdd()
     {
-        NavigationManager.NavigateTo("/project/setup", false);
+        NavigationManager.NavigateTo("/project/setup/", false);
+    }
+    private void Search()
+    {
+        GetProjectList(pageIndex, pageSize);
     }
 
     protected override async Task OnInitializedAsync()
     {
-        itemList = await GetProjectListAsync(pageIndex, pageSize);
-        total = itemList.Count;
+        GetProjectList(pageIndex, pageSize);
     }
 
-    public Task<List<ProjectModel>> GetProjectListAsync(int pageIndex, int pageSize)
+    private string GetB(string codeDirectory)
     {
-        return Task.FromResult((configService.GetConfig() ?? new List<ProjectModel>()).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList());
+        GitUtility.strWorkingDir = codeDirectory;
+        GitUtility.ExcuteGitCommand("symbolic-ref --short -q HEAD");
+        return "";
+    }
+
+    private void GetProjectList(int pageIndex, int pageSize)
+    {
+        var resList = configService.GetEntityList() ?? new List<ProjectModel>();
+        if (!string.IsNullOrWhiteSpace(searchFormModel.ProjectName))
+        {
+            resList = resList.Where(a => a.ProjectName.Contains(searchFormModel.ProjectName)).ToList();
+        }
+
+        itemList = resList.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+        foreach (var item in itemList)
+        {
+            item.CurrentBranch = GetB(item.CodeDirectory);
+        }
+        total = itemList.Count;
     }
 
     public async Task OnChange(PaginationEventArgs args)
@@ -124,16 +142,22 @@
         total = itemList.Count;
     }
 
-    public void RemoveSelection(string key)
+    private void Delete(string id)
     {
-        var selected = selectedRows.Where(x => x.ProjectName != key);
-        selectedRows = selected;
-    }
-
-    private void Delete(string key)
-    {
-        itemList.RemoveAll(x => x.ProjectName == key);
+        itemList.RemoveAll(a => a.Id == id);
         total = itemList.Count;
         configService.Save(itemList);
+
+        _message.Success("删除成功");
+    }
+
+    private void Edit(string id)
+    {
+        NavigationManager.NavigateTo($"/project/setup/{id}", false);
+    }
+
+    private void Mg(string id)
+    {
+        _message.Success(id);
     }
 }

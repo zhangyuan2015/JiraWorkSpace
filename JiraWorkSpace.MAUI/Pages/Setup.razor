@@ -65,7 +65,7 @@
     /// <returns></returns>
     protected override async Task OnInitializedAsync()
     {
-        setupModel = configService.GetConfig() ?? new SetupModel();
+        setupModel = configService.GetEntity() ?? new SetupModel();
     }
 
     private void OnFinish(EditContext editContext)

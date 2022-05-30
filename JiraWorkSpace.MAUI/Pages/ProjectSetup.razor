@@ -1,65 +1,101 @@
-﻿@page "/project/setup"
+﻿@page "/project/setup/{Id}"
+@page "/project/setup/"
 
 @using System.Text.Json;
+@using AntDesign.TableModels
 @using JiraWorkSpace.MAUI.Data
 @using JiraWorkSpace.MAUI.Data.Project
 @using JiraWorkSpace.MAUI.Data.Setup
+@inject MessageService _message
 
-<Form Model="@projectModel"
-      OnFinish="OnFinish"
-      OnFinishFailed="OnFinishFailed">
-    <Divider Orientation="left">基本信息</Divider>
+<Divider Orientation="left">基本信息</Divider>
+
+<Form @ref="_form" Model="@projectModel">
     <Row Gutter="24">
-        <GridCol Span="8">
+        <GridCol Span="6">
             <FormItem Label="项目名称">
                 <Input @bind-Value="@context.ProjectName" />
             </FormItem>
         </GridCol>
-        <GridCol Span="8">
+        <GridCol Span="6">
             <FormItem Label="Code Directory">
                 <Input @bind-Value="@context.CodeDirectory" />
             </FormItem>
         </GridCol>
-        <GridCol Span="8">
+        <GridCol Span="6">
             <FormItem Label="Git Url">
                 <Input @bind-Value="@context.GitUrl" />
             </FormItem>
         </GridCol>
     </Row>
-
-    <Divider Orientation="left">环境</Divider>
-    <Row Gutter="24">
-        <Table @ref="table"
-               TItem="EnvironmentModel"
-               DataSource="@environmentList"
-               Size=TableSize.Small>
-            <ChildContent>
-                <Selection Key="@(context.Name)" />
-                <Column Field="@context.Name" Sortable />
-                <Column @bind-Field="@context.BranchName" Sortable />
-                <Column @bind-Field="@context.Url" Sortable />
-                <ActionColumn>
-                    <Space>
-                        <SpaceItem><Button Danger OnClick="()=>Delete(context.Name)">Delete</Button></SpaceItem>
-                    </Space>
-                </ActionColumn>
-            </ChildContent>
-        </Table>
-    </Row>
-    <FormItem WrapperColOffset="6" WrapperColSpan="12">
-        <Button Type="@ButtonType.Primary" HtmlType="submit">
-            保存
-        </Button>
-    </FormItem>
 </Form>
+
+<Divider Orientation="left">环境集合</Divider>
+
+<Form @ref="_environment_form" Model="@environmentModel">
+    <Row Gutter="24">
+        <GridCol Span="6">
+            <FormItem Label="环境名称">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="分支名">
+                <Input @bind-Value="@context.BranchName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="站点 Url">
+                <Input @bind-Value="@context.Url" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <Button Type="@ButtonType.Primary" HtmlType="button" OnClick="AddEnvironment">
+                提交
+            </Button>
+        </GridCol>
+    </Row>
+</Form>
+
+<Table @ref="table"
+       TItem="EnvironmentModel"
+       DataSource="@projectModel.EnvironmentList"
+       OnChange="OnChange">
+    <Selection Key="@(context.Id)" />
+    <Column @bind-Field="@context.Name" Sortable />
+    <Column @bind-Field="@context.BranchName" Sortable />
+    <Column @bind-Field="@context.Url" Sortable />
+    <ActionColumn>
+        <Space>
+            <SpaceItem><Button OnClick="()=>EditEnvironment(context.Id)">Edit</Button></SpaceItem>
+        </Space>
+        <Space>
+            <SpaceItem>
+                <Popconfirm Placement="@Placement.TopRight" Title="确认删除？" OnConfirm="()=>DelEnvironment(context.Id)">
+                    <Button Danger>Delete</Button>
+                </Popconfirm>
+            </SpaceItem>
+        </Space>
+    </ActionColumn>
+</Table>
+
+<Button Type="@ButtonType.Primary" HtmlType="button" OnClick="OnSave">
+    保存
+</Button>
 
 @code
 {
+    [Parameter]
+    public string Id { get; set; }
+
+    Form<ProjectModel> _form;
+    Form<EnvironmentModel> _environment_form;
+
     ITable table;
     private List<ProjectModel> projectModelList;
     private ProjectModel projectModel;
-    List<EnvironmentModel> environmentList;
-    private JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>> configService = new JiraWorkSpace.MAUI.Data.ConfigService<List<ProjectModel>>(nameof(ProjectModel));
+    private EnvironmentModel environmentModel;
+    private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
 
     /// <summary>
     ///
@@ -67,26 +103,74 @@
     /// <returns></returns>
     protected override async Task OnInitializedAsync()
     {
-        projectModelList = configService.GetConfig() ?? new List<ProjectModel>();
-        projectModel = projectModelList.FirstOrDefault();
-        if (projectModel == null)
+        projectModelList = configService.GetEntityList() ?? new List<ProjectModel>();
+
+        if (!string.IsNullOrWhiteSpace(Id))
         {
-            projectModel = new ProjectModel() { EnvironmentList = new List<EnvironmentModel>() };
+            projectModel = projectModelList.FirstOrDefault(a => a.Id == Id);
+            if (projectModel == null)
+                await _message.Warning($"项目 {Id} 不存在");
+        }
+
+        if (projectModel == null)
+            projectModel = new ProjectModel();
+
+        if (environmentModel == null)
+            environmentModel = new EnvironmentModel();
+    }
+
+    public async Task OnChange(QueryModel<EnvironmentModel> queryModel)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(queryModel));
+    }
+
+    private void OnSave()
+    {
+        if (!_form.Validate())
+            return;
+
+        if (projectModelList.Any(a => a.ProjectName == projectModel.ProjectName && a.Id != projectModel.Id))
+        {
+            _message.Error($"项目 {projectModel.ProjectName} 已存在，无法新增");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectModel.Id))
+        {
+            projectModel.Id = Guid.NewGuid().ToString();
             projectModelList.Add(projectModel);
         }
-        else
-        {
-            environmentList = projectModel.EnvironmentList ?? new List<EnvironmentModel>();
-        }
-    }
 
-    private void OnFinish(EditContext editContext)
-    {
         configService.Save(projectModelList);
+
+        _message.Success($"项目 {projectModel.ProjectName} 保存成功");
+
+        projectModel = new ProjectModel();
     }
 
-    private void OnFinishFailed(EditContext editContext)
+    private void DelEnvironment(string id)
     {
-        Console.WriteLine($"Failed:{JsonSerializer.Serialize(projectModel)}");
+        projectModel.EnvironmentList.RemoveAll(a => a.Id == id);
+    }
+
+    private void EditEnvironment(string id)
+    {
+        environmentModel = projectModel.EnvironmentList.FirstOrDefault(a => a.Id == id);
+    }
+
+    private void AddEnvironment()
+    {
+        if (projectModel.EnvironmentList.Any(a => a.Name == environmentModel.Name && a.Id != environmentModel.Id))
+        {
+            _message.Error($"环境 {environmentModel.Name} 已存在，无法新增");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(environmentModel.Id))
+        {
+            environmentModel.Id = Guid.NewGuid().ToString();
+            projectModel.EnvironmentList.Add(environmentModel);
+        }
+        environmentModel = new EnvironmentModel();
     }
 }

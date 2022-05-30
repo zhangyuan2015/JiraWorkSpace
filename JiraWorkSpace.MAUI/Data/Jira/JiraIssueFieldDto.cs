@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Text.Json.Serialization;
 
-namespace JiraWorkSpace.MAUI.Data
+namespace JiraWorkSpace.MAUI.Data.Jira
 {
     public class JiraIssueFieldDto
     {
