@@ -32,7 +32,6 @@ namespace JiraWorkSpace.MAUI.Data.Project
         /// <summary>
         /// 代码目录
         /// </summary>
-        [Required]
         [DisplayName("当前")]
         public string CurrentBranch { get; set; }
 

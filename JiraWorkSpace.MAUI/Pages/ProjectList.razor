@@ -137,9 +137,7 @@
         {
             pageSize = args.PageSize;
         }
-
-        itemList = await GetProjectListAsync(pageIndex, pageSize);
-        total = itemList.Count;
+        GetProjectList(pageIndex, pageSize);
     }
 
     private void Delete(string id)

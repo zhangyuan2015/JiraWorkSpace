@@ -75,6 +75,7 @@ namespace JiraWorkSpace.MAUI.Data
         /// <param name="e"></param>
         private static void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
+            
             if (null == e || string.IsNullOrEmpty(e.Data))
             {
                 return;
