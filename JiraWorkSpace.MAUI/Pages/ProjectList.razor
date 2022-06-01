@@ -9,6 +9,7 @@
 @using System.Text
 @using System.Diagnostics
 @using JiraWorkSpace.MAUI.Data.Project
+@using JiraWorkSpace.MAUI.Data.Setup
 @inject NavigationManager NavigationManager
 @inject MessageService _message
 
@@ -28,13 +29,28 @@
 
 <Table @ref="table"
        TItem="ProjectModel"
-       DataSource="@itemList"
+       DataSource="@projectList"
        Size=TableSize.Small>
     <ChildContent>
         <Selection Key="@(context.Id)" />
-        <Column @bind-Field="@context.ProjectName" Sortable />
-        <Column @bind-Field="@context.CodeDirectory" Sortable />
-        <Column @bind-Field="@context.GitUrl" Sortable>
+        <Column @bind-Field="@context.ProjectName" Sortable>
+            <Row>
+                <Col Span="12">
+                    @context.ProjectName
+                </Col>
+                <Col Span="12"><Tag Color="green" OnClick="()=>OpenCreateFeatureBranchModal(context.Id)">创建分支</Tag></Col>
+            </Row>
+        </Column>
+        <Column @bind-Field="@context.CodeDirectory">
+            <Row>
+                <Col Span="18">
+                <Button Type="@ButtonType.Link" OnClick="()=>OpenDir(context.CodeDirectory)">@context.CodeDirectory</Button>
+                </Col>
+                <Col Span="6"><Tag Color="green" OnClick="()=>Mg(context.Id)">切换Master</Tag></Col>
+            </Row>
+        </Column>
+        <Column @bind-Field="@context.CurrentBranch" />
+        <Column @bind-Field="@context.GitUrl">
             <Row>
                 <Col Span="18"><a href="@context.GitUrl" target="_blank">@context.GitUrl</a></Col>
                 <Col Span="6"><Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag></Col>
@@ -71,15 +87,51 @@
     </PaginationTemplate>
 </Table>
 
+<Modal Title="@("Create Feature Branch")"
+       Visible="@CreateFeatureBranchVisible"
+       OnOk="@CreateFeatureBranchHandleOk"
+       OnCancel="@CreateFeatureBranchHandleCancel">
+    <Form Loading="loading" Model="@createFeatureBranchModel"
+          LabelColSpan="6"
+          WrapperColSpan="18"
+          OnFinish="OnFinish"
+          @ref="@CreateFeatureBranchform">
+
+        <FormItem Label="分支类型">
+            <Select Mode="BranchTypeModel"
+                    DataSource="@BranchTypes"
+                    @bind-Value="@context.BranchType"
+                    LabelName="@nameof(BranchTypeModel.Name)"
+                    ValueName="@nameof(BranchTypeModel.Name)">
+            </Select>
+        </FormItem>
+        <FormItem Label="JiraId">
+            <Input @bind-Value="@context.JiraKey" />
+        </FormItem>
+        <FormItem Label="BranchDesc">
+            <Input @bind-Value="@context.BranchDesc" />
+        </FormItem>
+    </Form>
+</Modal>
+
 @code {
     public class SearchFormModel
     {
         public string ProjectName { get; set; }
     }
+    public class BranchTypeModel
+    {
+        public BranchTypeModel(string name)
+        {
+            Name = name;
+        }
+        public string Name { get; set; }
+    }
 
+    List<BranchTypeModel> BranchTypes = new List<BranchTypeModel> { new BranchTypeModel("feature"), new BranchTypeModel("hotfix") };
     AntDesign.Internal.IForm _form;
     SearchFormModel searchFormModel = new SearchFormModel();
-    List<ProjectModel> itemList;
+    List<ProjectModel> projectList;
 
     private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
 
@@ -93,6 +145,7 @@
     {
         NavigationManager.NavigateTo("/project/setup/", false);
     }
+
     private void Search()
     {
         GetProjectList(pageIndex, pageSize);
@@ -103,11 +156,18 @@
         GetProjectList(pageIndex, pageSize);
     }
 
-    private string GetB(string codeDirectory)
+    private string GetCurrentBranch(string codeDirectory)
     {
-        GitUtility.strWorkingDir = codeDirectory;
-        GitUtility.ExcuteGitCommand("symbolic-ref --short -q HEAD");
-        return "";
+        try
+        {
+            string currentBranch = new GitUtility(codeDirectory).ExcuteGitCommand("symbolic-ref --short -q HEAD");
+            currentBranch = currentBranch.Replace("\n", "").Replace("\t", "").Replace("\r", "").Trim();
+            return currentBranch;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
     }
 
     private void GetProjectList(int pageIndex, int pageSize)
@@ -118,15 +178,15 @@
             resList = resList.Where(a => a.ProjectName.Contains(searchFormModel.ProjectName)).ToList();
         }
 
-        itemList = resList.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
-        foreach (var item in itemList)
+        projectList = resList.OrderBy(a => a.ProjectName).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+        foreach (var item in projectList)
         {
-            item.CurrentBranch = GetB(item.CodeDirectory);
+            item.CurrentBranch = GetCurrentBranch(item.CodeDirectory);
         }
-        total = itemList.Count;
+        total = projectList.Count;
     }
 
-    public async Task OnChange(PaginationEventArgs args)
+    public void OnChange(PaginationEventArgs args)
     {
         if (pageIndex != args.Page)
         {
@@ -142,11 +202,16 @@
 
     private void Delete(string id)
     {
-        itemList.RemoveAll(a => a.Id == id);
-        total = itemList.Count;
-        configService.Save(itemList);
+        projectList.RemoveAll(a => a.Id == id);
+        total = projectList.Count;
+        configService.Save(projectList);
 
         _message.Success("删除成功");
+    }
+
+    private void OpenDir(string codeDirectory)
+    {
+        System.Diagnostics.Process.Start("explorer.exe", codeDirectory);
     }
 
     private void Edit(string id)
@@ -157,5 +222,113 @@
     private void Mg(string id)
     {
         _message.Success(id);
+    }
+
+    private void OpenCreateFeatureBranchModal(string id)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == id);
+        if (project == null)
+        {
+            _message.Error("项目不存在");
+            return;
+        }
+
+        createFeatureBranchModel.Project = project;
+        CreateFeatureBranchVisible = true;
+    }
+}
+
+@code {
+    public class CreateFeatureBranchModel
+    {
+        [Required]
+        public string BranchType { get; set; }
+        [Required]
+        public string JiraKey { get; set; }
+        public string JiraDesc { get; set; }
+        [Required]
+        public string BranchDesc { get; set; }
+
+        public ProjectModel Project { get; set; }
+    }
+
+    private CreateFeatureBranchModel createFeatureBranchModel = new CreateFeatureBranchModel();
+
+    bool loading = false;
+
+    void toggle(bool value) => loading = value;
+
+    private bool CreateFeatureBranchVisible = false;
+
+    private void CreateFeatureBranchHandleCancel(MouseEventArgs e)
+    {
+        CreateFeatureBranchVisible = false;
+    }
+
+    void CreateFeatureBranchHandleChange(string value)
+    {
+        _message.Info(value);
+    }
+
+    private Form<CreateFeatureBranchModel> CreateFeatureBranchform;
+
+    private void OnFinish(EditContext editContext)
+    {
+        loading = true;
+        SetupModel setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
+
+        try
+        {
+            var gitCheckoutMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand("checkout master");
+            //Your branch is up to date with 'origin/master'.\n
+            _message.Info(gitCheckoutMsg);
+            var gitPullMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand("pull");
+            //Already up to date.
+            _message.Info(gitPullMsg);
+
+            //feature/PRLMS-2737-yvan.zhang-0530-sync-lms-sn-opt
+            //{JIRAKEY}-{AD}-{MMdd}-{BranchName}
+            string branchName = setupModel.BranchRule.Replace("{JIRAKEY}", createFeatureBranchModel.JiraKey);
+            branchName = branchName.Replace("{AD}", setupModel.AD);
+            branchName = branchName.Replace("{MMdd}", DateTime.Now.ToString("MMdd"));
+            branchName = branchName.Replace("{BranchName}", createFeatureBranchModel.BranchDesc);
+            branchName = $"{createFeatureBranchModel.BranchType}/{branchName}";
+
+            var gitCreateBranchMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"branch {branchName}");
+            //_message.Info(gitCreateBranchMsg);
+
+            var gitCheckoutBranchMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
+            //_message.Info(gitCheckoutBranchMsg);
+
+            var currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
+            if (currentBranch == branchName)
+            {
+                _message.Success("创建成功");
+                createFeatureBranchModel.Project.CurrentBranch = currentBranch;
+                createFeatureBranchModel = new CreateFeatureBranchModel();
+            }
+            else
+            {
+                _message.Error("创建失败，请手动创建");
+            }
+        }
+        catch (Exception ex)
+        {
+            _message.Error(ex.Message);
+        }
+        finally
+        {
+            loading = false;
+            //CreateFeatureBranchVisible = false;
+        }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="e"></param>
+    private void CreateFeatureBranchHandleOk(MouseEventArgs e)
+    {
+        CreateFeatureBranchform.Submit();
     }
 }

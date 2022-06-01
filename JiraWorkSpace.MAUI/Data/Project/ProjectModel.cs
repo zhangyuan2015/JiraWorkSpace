@@ -30,9 +30,9 @@ namespace JiraWorkSpace.MAUI.Data.Project
         public string CodeDirectory { get; set; }
 
         /// <summary>
-        /// 代码目录
+        /// 当前分支
         /// </summary>
-        [DisplayName("当前")]
+        [DisplayName("当前分支")]
         public string CurrentBranch { get; set; }
 
         /// <summary>

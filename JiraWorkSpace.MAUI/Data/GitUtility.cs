@@ -4,10 +4,15 @@ namespace JiraWorkSpace.MAUI.Data
 {
     public class GitUtility
     {
+        public GitUtility(string workingDir)
+        {
+            WorkingDir = workingDir;
+        }
+
         /// <summary>
         /// 获取环境git.ext的环境变量路径
         /// </summary>
-        private static string strEnvironmentVariable
+        private string GetEnvironmentVariable
         {
             get
             {
@@ -30,27 +35,20 @@ namespace JiraWorkSpace.MAUI.Data
             }
         }
 
-        /// <summary>
-        /// 
+        /// <summary>        
         /// git工作路径
         /// </summary>
-        private static string m_strWorkingDir;
-        public static string strWorkingDir
-        {
-            get { return m_strWorkingDir; }
-            set { m_strWorkingDir = value; }
-        }
-
+        public string WorkingDir { get; set; }
 
         /// <summary>
         /// 执行git指令
         /// </summary>
-        public static void ExcuteGitCommand(string strCommnad)
+        public string ExcuteGitCommand(string strCommnad)
         {
-            string strGitPath = System.IO.Path.Combine(strEnvironmentVariable, "git.exe");
+            string strGitPath = Path.Combine(GetEnvironmentVariable, "git.exe");
             if (string.IsNullOrEmpty(strGitPath))
             {
-                return;
+                return "Git环境错误";
             }
 
             Process p = new Process();
@@ -59,27 +57,14 @@ namespace JiraWorkSpace.MAUI.Data
             p.StartInfo.CreateNoWindow = true;
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
-            p.StartInfo.WorkingDirectory = strWorkingDir;
-
-            p.OutputDataReceived += OnOutputDataReceived;
+            p.StartInfo.WorkingDirectory = WorkingDir;
 
             p.Start();
-            p.BeginOutputReadLine();
             p.WaitForExit();
-        }
 
-        /// <summary>
-        /// 输出git指令执行结果
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private static void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            
-            if (null == e || string.IsNullOrEmpty(e.Data))
-            {
-                return;
-            }
+            string returnMsg = p.StandardOutput.ReadToEnd();
+
+            return returnMsg;
         }
     }
 }
