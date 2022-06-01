@@ -46,7 +46,16 @@
                 <Col Span="18">
                 <Button Type="@ButtonType.Link" OnClick="()=>OpenDir(context.CodeDirectory)">@context.CodeDirectory</Button>
                 </Col>
-                <Col Span="6"><Tag Color="green" OnClick="()=>Mg(context.Id)">切换Master</Tag></Col>
+                <Col Span="6">
+
+                <Select DataSource="@context.EnvironmentList" TItem="EnvironmentModel" TItemValue=""
+                        LabelName="@nameof(EnvironmentModel.BranchName)"
+                        ValueName="@nameof(EnvironmentModel.BranchName)"
+                        Placeholder="切换分支"
+                        AllowClear>
+                </Select>
+
+                </Col>
             </Row>
         </Column>
         <Column @bind-Field="@context.CurrentBranch" />
@@ -222,6 +231,12 @@
     private void Mg(string id)
     {
         _message.Success(id);
+    }
+
+    private void CheckoutBranch(string branchName)
+    {
+        var gitCheckoutBranchMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
+        _message.Info(gitCheckoutBranchMsg);
     }
 
     private void OpenCreateFeatureBranchModal(string id)
