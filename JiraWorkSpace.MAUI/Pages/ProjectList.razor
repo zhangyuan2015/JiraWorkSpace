@@ -30,40 +30,22 @@
 <Table @ref="table"
        TItem="ProjectModel"
        DataSource="@projectList"
-       Size=TableSize.Small>
-    <ChildContent>
-        <Selection Key="@(context.Id)" />
-        <Column @bind-Field="@context.ProjectName" Sortable>
-            <Row>
-                <Col Span="12">
-                    @context.ProjectName
-                </Col>
-                <Col Span="12"><Tag Color="green" OnClick="()=>OpenCreateFeatureBranchModal(context.Id)">创建分支</Tag></Col>
-            </Row>
-        </Column>
+       Size=TableSize.Small
+       RowExpandable="@((record)=>true)">
+
+    <RowTemplate>
+        <Column @bind-Field="@context.ProjectName" Sortable />
         <Column @bind-Field="@context.CodeDirectory">
+            <Button Type="@ButtonType.Link" OnClick="()=>OpenDir(context.CodeDirectory)">@context.CodeDirectory</Button>
+        </Column>
+        <Column @bind-Field="@context.CurrentBranch">
             <Row>
-                <Col Span="18">
-                <Button Type="@ButtonType.Link" OnClick="()=>OpenDir(context.CodeDirectory)">@context.CodeDirectory</Button>
-                </Col>
-                <Col Span="6">
-
-                <Select DataSource="@context.EnvironmentList" TItem="EnvironmentModel" TItemValue=""
-                        LabelName="@nameof(EnvironmentModel.BranchName)"
-                        ValueName="@nameof(EnvironmentModel.BranchName)"
-                        Placeholder="切换分支"
-                        AllowClear>
-                </Select>
-
-                </Col>
+                <Col>@context.CurrentBranch</Col>
+                <Col><Tag Color="blue" OnClick="()=>GitCommandPull(context.CodeDirectory)">pull</Tag></Col>
             </Row>
         </Column>
-        <Column @bind-Field="@context.CurrentBranch" />
         <Column @bind-Field="@context.GitUrl">
-            <Row>
-                <Col Span="18"><a href="@context.GitUrl" target="_blank">@context.GitUrl</a></Col>
-                <Col Span="6"><Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag></Col>
-            </Row>
+            <a href="@context.GitUrl" target="_blank">@context.GitUrl</a>
         </Column>
         <ActionColumn>
             <Space>
@@ -75,7 +57,22 @@
                 </SpaceItem>
             </Space>
         </ActionColumn>
-    </ChildContent>
+    </RowTemplate>
+
+    <ExpandTemplate Context="rowData">
+        <Table DataSource="rowData.Data.EnvironmentList" Loading="rowData.Data.EnvironmentList==null" HidePagination>
+            <Column TData="string" DataIndex="Name" />
+            <Column TData="string" DataIndex="BranchName" />
+            <Column TData="string" DataIndex="Url">
+                <a href="@context.Url" target="_blank">@context.Url</a>
+            </Column>
+            <ActionColumn>
+                <Tag Color="green" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)">创建分支</Tag>
+                <Tag Color="blue" OnClick="()=>CheckoutBranch(rowData.Data.Id,context.Id)">切换分支</Tag>
+                <Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag>
+            </ActionColumn>
+        </Table>
+    </ExpandTemplate>
 
     <PaginationTemplate>
         <div style="padding-top:10px;">
@@ -96,6 +93,8 @@
     </PaginationTemplate>
 </Table>
 
+
+
 <Modal Title="@("Create Feature Branch")"
        Visible="@CreateFeatureBranchVisible"
        OnOk="@CreateFeatureBranchHandleOk"
@@ -105,6 +104,18 @@
           WrapperColSpan="18"
           OnFinish="OnFinish"
           @ref="@CreateFeatureBranchform">
+
+        <FormItem Label="项目">
+            <Input ReadOnly @bind-Value="@context.Project.ProjectName" />
+        </FormItem>
+
+        <FormItem Label="环境">
+            <Input ReadOnly @bind-Value="@context.Environment.Name" />
+        </FormItem>
+
+        <FormItem Label="环境分支">
+            <Input ReadOnly @bind-Value="@context.Environment.BranchName" />
+        </FormItem>
 
         <FormItem Label="分支类型">
             <Select Mode="BranchTypeModel"
@@ -239,17 +250,63 @@
         _message.Info(gitCheckoutBranchMsg);
     }
 
-    private void OpenCreateFeatureBranchModal(string id)
+    private void OpenCreateFeatureBranchModal(string projectId, string environmentId)
     {
-        var project = projectList.FirstOrDefault(a => a.Id == id);
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
         if (project == null)
         {
             _message.Error("项目不存在");
             return;
         }
 
+        var environment = project.EnvironmentList.FirstOrDefault(a => a.Id == environmentId);
+        if (environment == null)
+        {
+            _message.Error("环境不存在");
+            return;
+        }
+
         createFeatureBranchModel.Project = project;
+        createFeatureBranchModel.Environment = environment;
         CreateFeatureBranchVisible = true;
+    }
+
+    private void CheckoutBranch(string projectId, string environmentId)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error("项目不存在");
+            return;
+        }
+
+        var environment = project.EnvironmentList.FirstOrDefault(a => a.Id == environmentId);
+        if (environment == null)
+        {
+            _message.Error("环境不存在");
+            return;
+        }
+
+        var currentBranch = GetCurrentBranch(project.CodeDirectory);
+        if (currentBranch == environment.BranchName)
+        {
+            _message.Success($"当前分支{currentBranch}，无需切换");
+            return;
+        }
+
+        var gitCheckoutBranchMsg = new GitUtility(project.CodeDirectory).ExcuteGitCommand($"checkout {environment.BranchName}");
+        _message.Info(gitCheckoutBranchMsg);
+
+        currentBranch = GetCurrentBranch(project.CodeDirectory);
+        if (currentBranch == environment.BranchName)
+        {
+            _message.Success("切换成功");
+            project.CurrentBranch = currentBranch;
+        }
+        else
+        {
+            _message.Error("切换失败，请手动切换");
+        }
     }
 }
 
@@ -265,6 +322,7 @@
         public string BranchDesc { get; set; }
 
         public ProjectModel Project { get; set; }
+        public EnvironmentModel Environment { get; set; }
     }
 
     private CreateFeatureBranchModel createFeatureBranchModel = new CreateFeatureBranchModel();
@@ -287,6 +345,13 @@
 
     private Form<CreateFeatureBranchModel> CreateFeatureBranchform;
 
+    private void GitCommandPull(string codeDirectory)
+    {
+        var gitPullMsg = new GitUtility(codeDirectory).ExcuteGitCommand("pull");
+        //Already up to date.
+        _message.Info(gitPullMsg);
+    }
+
     private void OnFinish(EditContext editContext)
     {
         loading = true;
@@ -294,12 +359,15 @@
 
         try
         {
-            var gitCheckoutMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand("checkout master");
-            //Your branch is up to date with 'origin/master'.\n
-            _message.Info(gitCheckoutMsg);
-            var gitPullMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand("pull");
-            //Already up to date.
-            _message.Info(gitPullMsg);
+            var currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
+            if (currentBranch != createFeatureBranchModel.Environment.BranchName)
+            {
+                var gitCheckoutMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {createFeatureBranchModel.Environment.BranchName}");
+                //Your branch is up to date with 'origin/master'.\n
+                _message.Info(gitCheckoutMsg);
+            }
+
+            GitCommandPull(createFeatureBranchModel.Project.CodeDirectory);
 
             //feature/PRLMS-2737-yvan.zhang-0530-sync-lms-sn-opt
             //{JIRAKEY}-{AD}-{MMdd}-{BranchName}
@@ -315,7 +383,7 @@
             var gitCheckoutBranchMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
             //_message.Info(gitCheckoutBranchMsg);
 
-            var currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
+            currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
             if (currentBranch == branchName)
             {
                 _message.Success("创建成功");
