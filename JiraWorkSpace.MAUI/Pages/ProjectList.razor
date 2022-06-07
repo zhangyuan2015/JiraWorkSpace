@@ -12,6 +12,7 @@
 @using JiraWorkSpace.MAUI.Data.Setup
 @inject NavigationManager NavigationManager
 @inject MessageService _message
+@inject ModalService ModalService
 
 <Form Model="searchFormModel" @ref="_form" Name="advanced_search">
     <Row Gutter="24">
@@ -40,8 +41,13 @@
         </Column>
         <Column @bind-Field="@context.CurrentBranch">
             <Row>
-                <Col>@context.CurrentBranch</Col>
-                <Col><Tag Color="blue" OnClick="()=>GitCommandPull(context.CodeDirectory)">pull</Tag></Col>
+                @context.CurrentBranch
+            </Row>
+            <Row>
+                <Tag Color="green" OnClick="()=>GitCommandPull(context.CodeDirectory)">pull</Tag>
+                <Tag Color="blue" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)">commit</Tag>
+                <Tag Color="green" OnClick="()=>TortoiseGitSync(context.CodeDirectory)">sync</Tag>
+                <Tag Color="blue" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)">checkout</Tag>
             </Row>
         </Column>
         <Column @bind-Field="@context.GitUrl">
@@ -68,7 +74,7 @@
             </Column>
             <ActionColumn>
                 <Tag Color="green" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)">创建分支</Tag>
-                <Tag Color="blue" OnClick="()=>CheckoutBranch(rowData.Data.Id,context.Id)">切换分支</Tag>
+                <Tag Color="blue" OnClick="()=>CheckoutBranchByEnvironmentId(rowData.Data.Id,context.Id)">切换分支</Tag>
                 <Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag>
             </ActionColumn>
         </Table>
@@ -244,12 +250,6 @@
         _message.Success(id);
     }
 
-    private void CheckoutBranch(string branchName)
-    {
-        var gitCheckoutBranchMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
-        _message.Info(gitCheckoutBranchMsg);
-    }
-
     private void OpenCreateFeatureBranchModal(string projectId, string environmentId)
     {
         var project = projectList.FirstOrDefault(a => a.Id == projectId);
@@ -271,7 +271,32 @@
         CreateFeatureBranchVisible = true;
     }
 
-    private void CheckoutBranch(string projectId, string environmentId)
+    private ModalRef _modalRef;
+    private void OpenCheckoutBranchList(string projectId, string codeDirectory)
+    {
+        var modalConfig = new ModalOptions();
+        modalConfig.Title = "TemplateWithResult";
+        modalConfig.Style = "top:20px;";
+        // In order for Dispose in ConfirmTemplateDemo to take effect every time it is closed
+        modalConfig.DestroyOnClose = true;
+
+        var modalRefTask = ModalService.CreateModalAsync<BranchListModal, string, string>(modalConfig, codeDirectory);
+        modalRefTask.Wait();
+        var modalRef = modalRefTask.Result;
+
+        modalRef.OnOk = (result) =>
+        {
+            CheckoutBranch(projectId, result);
+            return Task.CompletedTask;
+        };
+
+        modalRef.OnCancel = (result) =>
+        {
+            return Task.CompletedTask;
+        };
+    }
+
+    private void CheckoutBranchByEnvironmentId(string projectId, string environmentId)
     {
         var project = projectList.FirstOrDefault(a => a.Id == projectId);
         if (project == null)
@@ -287,18 +312,30 @@
             return;
         }
 
+        CheckoutBranch(projectId, environment.BranchName);
+    }
+
+    private void CheckoutBranch(string projectId, string branchName)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error("项目不存在");
+            return;
+        }
+
         var currentBranch = GetCurrentBranch(project.CodeDirectory);
-        if (currentBranch == environment.BranchName)
+        if (currentBranch == branchName)
         {
             _message.Success($"当前分支{currentBranch}，无需切换");
             return;
         }
 
-        var gitCheckoutBranchMsg = new GitUtility(project.CodeDirectory).ExcuteGitCommand($"checkout {environment.BranchName}");
+        var gitCheckoutBranchMsg = new GitUtility(project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
         _message.Info(gitCheckoutBranchMsg);
 
         currentBranch = GetCurrentBranch(project.CodeDirectory);
-        if (currentBranch == environment.BranchName)
+        if (currentBranch == branchName)
         {
             _message.Success("切换成功");
             project.CurrentBranch = currentBranch;
@@ -350,6 +387,20 @@
         var gitPullMsg = new GitUtility(codeDirectory).ExcuteGitCommand("pull");
         //Already up to date.
         _message.Info(gitPullMsg);
+    }
+
+    private void TortoiseGitCommit(string codeDirectory)
+    {
+        var excuteMsg = new TortoiseGitUtility(codeDirectory).ExcuteCommand("/command:commit");
+        if (!string.IsNullOrWhiteSpace(excuteMsg))
+            _message.Info(excuteMsg);
+    }
+
+    private void TortoiseGitSync(string codeDirectory)
+    {
+        var excuteMsg = new TortoiseGitUtility(codeDirectory).ExcuteCommand("/command:sync");
+        if (!string.IsNullOrWhiteSpace(excuteMsg))
+            _message.Info(excuteMsg);
     }
 
     private void OnFinish(EditContext editContext)

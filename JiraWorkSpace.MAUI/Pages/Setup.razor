@@ -18,7 +18,7 @@
     <Divider Orientation="left">代码配置</Divider>
     <Row Gutter="24">
         <GridCol Span="8">
-            <FormItem Label="Branch Rule" Help="{JIRAKEY}-{AD}-{MMdd}-{BranchName}">
+            <FormItem Label="Branch Rule" Help="@context.DefBranchRule">
                 <Input @bind-Value="@context.BranchRule" />
             </FormItem>
         </GridCol>
@@ -70,6 +70,8 @@
 
     private void OnFinish(EditContext editContext)
     {
+        if (string.IsNullOrWhiteSpace(setupModel.BranchRule))
+            setupModel.BranchRule = setupModel.DefBranchRule;
         configService.Save(setupModel);
     }
 
