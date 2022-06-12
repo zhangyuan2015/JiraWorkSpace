@@ -44,10 +44,10 @@
                 @context.CurrentBranch
             </Row>
             <Row>
-                <Tag Color="green" OnClick="()=>GitCommandPull(context.CodeDirectory)">pull</Tag>
-                <Tag Color="blue" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)">commit</Tag>
-                <Tag Color="green" OnClick="()=>TortoiseGitSync(context.CodeDirectory)">sync</Tag>
-                <Tag Color="blue" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)">checkout</Tag>
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>GitCommandPull(context.CodeDirectory)" Size="@ButtonSize.Small">pull</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)" Size="@ButtonSize.Small">commit</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitSync(context.CodeDirectory)" Size="@ButtonSize.Small">sync</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)" Size="@ButtonSize.Small">checkout</Button>
             </Row>
         </Column>
         <Column @bind-Field="@context.GitUrl">
@@ -73,9 +73,9 @@
                 <a href="@context.Url" target="_blank">@context.Url</a>
             </Column>
             <ActionColumn>
-                <Tag Color="green" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)">创建分支</Tag>
-                <Tag Color="blue" OnClick="()=>CheckoutBranchByEnvironmentId(rowData.Data.Id,context.Id)">切换分支</Tag>
-                <Tag Color="green" OnClick="()=>Mg(context.Id)">合并请求</Tag>
+                <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">创建分支</Button>
+                <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>CheckoutBranchByEnvironmentId(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">切换分支</Button>
+                <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>Mg(context.Id)" Size="@ButtonSize.Small">合并请求</Button>
             </ActionColumn>
         </Table>
     </ExpandTemplate>
@@ -140,7 +140,17 @@
     </Form>
 </Modal>
 
+<Modal Title="@("输出")"
+       Visible="@CmdOutputVisible"
+       OnOk="@CmdOutputHandleOk"
+       Style="width: 860px; height:720px;"
+       OnCancel="@CmdOutputhHandleCancel">
+    <TextArea Id="txaCmdOutput" Rows="12" ReadOnly @bind-Value="@CmdOutputContent" />
+</Modal>
+
 @code {
+    private bool opLoading { get; set; } = false;
+
     public class SearchFormModel
     {
         public string ProjectName { get; set; }
@@ -272,10 +282,10 @@
     }
 
     private ModalRef _modalRef;
-    private void OpenCheckoutBranchList(string projectId, string codeDirectory)
+    private async void OpenCheckoutBranchList(string projectId, string codeDirectory)
     {
         var modalConfig = new ModalOptions();
-        modalConfig.Title = "TemplateWithResult";
+        modalConfig.Title = "选择分支";
         modalConfig.Style = "top:20px;";
         // In order for Dispose in ConfirmTemplateDemo to take effect every time it is closed
         modalConfig.DestroyOnClose = true;
@@ -286,8 +296,7 @@
 
         modalRef.OnOk = (result) =>
         {
-            CheckoutBranch(projectId, result);
-            return Task.CompletedTask;
+            return Task.Run(() => CheckoutBranch(projectId, result));
         };
 
         modalRef.OnCancel = (result) =>
@@ -331,8 +340,7 @@
             return;
         }
 
-        var gitCheckoutBranchMsg = new GitUtility(project.CodeDirectory).ExcuteGitCommand($"checkout {branchName}");
-        _message.Info(gitCheckoutBranchMsg);
+        new GitUtility(project.CodeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived($"checkout {branchName}");
 
         currentBranch = GetCurrentBranch(project.CodeDirectory);
         if (currentBranch == branchName)
@@ -382,11 +390,11 @@
 
     private Form<CreateFeatureBranchModel> CreateFeatureBranchform;
 
-    private void GitCommandPull(string codeDirectory)
+    private async Task GitCommandPull(string codeDirectory)
     {
-        var gitPullMsg = new GitUtility(codeDirectory).ExcuteGitCommand("pull");
-        //Already up to date.
-        _message.Info(gitPullMsg);
+        opLoading = true;
+        await Task.Run(() => new GitUtility(codeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived("pull"));
+        opLoading = false;
     }
 
     private void TortoiseGitCommit(string codeDirectory)
@@ -413,9 +421,7 @@
             var currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
             if (currentBranch != createFeatureBranchModel.Environment.BranchName)
             {
-                var gitCheckoutMsg = new GitUtility(createFeatureBranchModel.Project.CodeDirectory).ExcuteGitCommand($"checkout {createFeatureBranchModel.Environment.BranchName}");
-                //Your branch is up to date with 'origin/master'.\n
-                _message.Info(gitCheckoutMsg);
+                CheckoutBranch(createFeatureBranchModel.Project.Id, createFeatureBranchModel.Environment.BranchName);
             }
 
             GitCommandPull(createFeatureBranchModel.Project.CodeDirectory);
@@ -464,5 +470,34 @@
     private void CreateFeatureBranchHandleOk(MouseEventArgs e)
     {
         CreateFeatureBranchform.Submit();
+    }
+}
+
+@code {
+    private void CmdOutput(string cmdOutputContent)
+    {
+        if (!CmdOutputVisible)
+            CmdOutputVisible = true;
+        CmdOutputContent += $"{cmdOutputContent}{Environment.NewLine}";
+    }
+
+    private bool CmdOutputVisible = false;
+
+    private string CmdOutputContent { get; set; }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="e"></param>
+    private void CmdOutputHandleOk(MouseEventArgs e)
+    {
+        CmdOutputContent = "";
+        CmdOutputVisible = false;
+    }
+
+    private void CmdOutputhHandleCancel(MouseEventArgs e)
+    {
+        CmdOutputContent = "";
+        CmdOutputVisible = false;
     }
 }

@@ -5,16 +5,18 @@
     <Text>操作目录 "@codeDirectory"</Text>
     <br />
     <Select DataSource="@branchNameList"
-        @bind-Value="@_selectedValue"
-        LabelName="@nameof(BranchName.Name)"
-        ValueName="@nameof(BranchName.Name)"
-        Placeholder="Select a Branch"
-        DefaultActiveFirstItem="false"
-        EnableSearch>
-</Select>
+            @bind-Value="@_selectedValue"
+            LabelName="@nameof(BranchName.Name)"
+            ValueName="@nameof(BranchName.Name)"
+            Placeholder="Select a Branch"
+            DefaultActiveFirstItem="false"
+            EnableSearch>
+    </Select>
+    <br />
+    @_selectedValue
 </div>
 
-@code{
+@code {
 
     class BranchName
     {

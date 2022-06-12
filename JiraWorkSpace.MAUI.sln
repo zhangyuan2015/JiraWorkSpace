@@ -12,6 +12,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Domain", "Jir
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JiraWorkSpace.Domain.Shared", "JiraWorkSpace.Domain.Shared\JiraWorkSpace.Domain.Shared.csproj", "{32CE6A4B-7592-42AD-8E50-05726A29025D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiraWorkSpace.CMD", "JiraWorkSpace.CMD\JiraWorkSpace.CMD.csproj", "{90440DE1-44E8-413A-A7F6-46CF3C0CA587}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,6 +42,10 @@ Global
 		{32CE6A4B-7592-42AD-8E50-05726A29025D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32CE6A4B-7592-42AD-8E50-05726A29025D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32CE6A4B-7592-42AD-8E50-05726A29025D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90440DE1-44E8-413A-A7F6-46CF3C0CA587}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90440DE1-44E8-413A-A7F6-46CF3C0CA587}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90440DE1-44E8-413A-A7F6-46CF3C0CA587}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90440DE1-44E8-413A-A7F6-46CF3C0CA587}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
