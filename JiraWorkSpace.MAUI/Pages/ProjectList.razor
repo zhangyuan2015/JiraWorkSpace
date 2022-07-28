@@ -333,6 +333,11 @@
             return;
         }
 
+        CheckoutBranch(project, branchName);
+    }
+
+    private void CheckoutBranch(ProjectModel project, string branchName)
+    {
         var currentBranch = GetCurrentBranch(project.CodeDirectory);
         if (currentBranch == branchName)
         {
@@ -340,18 +345,23 @@
             return;
         }
 
-        new GitUtility(project.CodeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived($"checkout {branchName}");
-
-        currentBranch = GetCurrentBranch(project.CodeDirectory);
-        if (currentBranch == branchName)
+        opLoading = true;
+        CmdOutputVisible = true;
+        Task.Run(() =>
         {
-            _message.Success("切换成功");
-            project.CurrentBranch = currentBranch;
-        }
-        else
-        {
-            _message.Error("切换失败，请手动切换");
-        }
+            new GitUtility(project.CodeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived($"checkout {branchName}");
+            currentBranch = GetCurrentBranch(project.CodeDirectory);
+            if (currentBranch == branchName)
+            {
+                _message.Success("切换成功");
+                project.CurrentBranch = currentBranch;
+            }
+            else
+            {
+                _message.Error("切换失败，请手动切换");
+            }
+            opLoading = false;
+        });
     }
 }
 
@@ -393,6 +403,7 @@
     private async Task GitCommandPull(string codeDirectory)
     {
         opLoading = true;
+        CmdOutputVisible = true;
         await Task.Run(() => new GitUtility(codeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived("pull"));
         opLoading = false;
     }
@@ -411,7 +422,7 @@
             _message.Info(excuteMsg);
     }
 
-    private void OnFinish(EditContext editContext)
+    private async void OnFinish(EditContext editContext)
     {
         loading = true;
         SetupModel setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
@@ -424,9 +435,8 @@
                 CheckoutBranch(createFeatureBranchModel.Project.Id, createFeatureBranchModel.Environment.BranchName);
             }
 
-            GitCommandPull(createFeatureBranchModel.Project.CodeDirectory);
+            await GitCommandPull(createFeatureBranchModel.Project.CodeDirectory);
 
-            //feature/PRLMS-2737-yvan.zhang-0530-sync-lms-sn-opt
             //{JIRAKEY}-{AD}-{MMdd}-{BranchName}
             string branchName = setupModel.BranchRule.Replace("{JIRAKEY}", createFeatureBranchModel.JiraKey);
             branchName = branchName.Replace("{AD}", setupModel.AD);
@@ -479,6 +489,7 @@
         if (!CmdOutputVisible)
             CmdOutputVisible = true;
         CmdOutputContent += $"{cmdOutputContent}{Environment.NewLine}";
+        InvokeAsync(StateHasChanged);
     }
 
     private bool CmdOutputVisible = false;
