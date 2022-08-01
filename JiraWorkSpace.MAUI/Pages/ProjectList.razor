@@ -75,7 +75,9 @@
             <ActionColumn>
                 <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">创建分支</Button>
                 <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>CheckoutBranchByEnvironmentId(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">切换分支</Button>
-                <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>Mg(context.Id)" Size="@ButtonSize.Small">合并请求</Button>
+                <Tooltip Title="@("发起当前分支到此分支的合并请求")">
+                    <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenMergeRequest(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">合并请求</Button>
+                </Tooltip>
             </ActionColumn>
         </Table>
     </ExpandTemplate>
@@ -255,9 +257,30 @@
         NavigationManager.NavigateTo($"/project/setup/{id}", false);
     }
 
-    private void Mg(string id)
+    private void OpenMergeRequest(string projectId, string environmentId)
     {
-        _message.Success(id);
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error($"项目不存在:{projectId}");
+            return;
+        }
+        var environment = project.EnvironmentList.FirstOrDefault(a => a.Id == environmentId);
+        if (environment == null)
+        {
+            _message.Error($"环境不存在:{environmentId}");
+            return;
+        }
+
+        try
+        {
+            MergeRequest.OpenMergeRequest(project.GitUrl, project.CurrentBranch, environment.BranchName, "GitLab");
+        }
+        catch (Exception ex)
+        {
+            _message.Error($"异常:{ex.Message}");
+            return;
+        }
     }
 
     private void OpenCreateFeatureBranchModal(string projectId, string environmentId)
@@ -265,14 +288,14 @@
         var project = projectList.FirstOrDefault(a => a.Id == projectId);
         if (project == null)
         {
-            _message.Error("项目不存在");
+            _message.Error($"项目不存在:{projectId}");
             return;
         }
 
         var environment = project.EnvironmentList.FirstOrDefault(a => a.Id == environmentId);
         if (environment == null)
         {
-            _message.Error("环境不存在");
+            _message.Error($"环境不存在:{environmentId}");
             return;
         }
 

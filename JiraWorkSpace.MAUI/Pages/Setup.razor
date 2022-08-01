@@ -3,6 +3,7 @@
 @using System.Text.Json;
 @using JiraWorkSpace.MAUI.Data
 @using JiraWorkSpace.MAUI.Data.Setup
+@inject MessageService _message
 
 <Form Model="@setupModel"
       OnFinish="OnFinish"
@@ -72,7 +73,14 @@
     {
         if (string.IsNullOrWhiteSpace(setupModel.BranchRule))
             setupModel.BranchRule = setupModel.DefBranchRule;
-        configService.Save(setupModel);
+        try
+        {
+            configService.Save(setupModel);
+        }
+        catch (Exception ex)
+        {
+            _message.Error($"保存异常:{ex.Message}");
+        }
     }
 
     private void OnFinishFailed(EditContext editContext)

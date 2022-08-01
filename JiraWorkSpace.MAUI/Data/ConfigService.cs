@@ -13,7 +13,14 @@ namespace JiraWorkSpace.MAUI.Data
 
         private string GetConfigFilePath()
         {
-            return $"{AppDomain.CurrentDomain.BaseDirectory}\\_{ConfigKey}.json";
+            var basePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string projectPath = $"{basePath}\\JiraWorkSpace";
+            if (!Directory.Exists(projectPath))
+                Directory.CreateDirectory(projectPath);
+
+            string configName = $"_{ConfigKey}.json";
+            string configPath = $"{projectPath}\\{configName}";
+            return configPath;
         }
 
         public T GetEntity()
