@@ -1,0 +1,206 @@
+﻿@page "/project/setup/{Id}"
+@page "/project/setup/"
+
+@using System.Text.Json;
+@using AntDesign.TableModels
+@using JiraWorkSpace.MAUI.Data
+@using JiraWorkSpace.MAUI.Data.Project
+@using JiraWorkSpace.MAUI.Data.Setup
+@inject MessageService _message
+
+<Divider Orientation="left">基本信息</Divider>
+
+<Form @ref="_form" Model="@projectModel">
+    <Row Gutter="24">
+        <GridCol Span="6">
+            <FormItem Label="项目名称">
+                <Input @bind-Value="@context.ProjectName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="Code Directory">
+                <Input @bind-Value="@context.CodeDirectory" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="2">
+            <FormItem Label="JiraId前缀">
+                <Input @bind-Value="@context.JiraIdPrefix" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="Git Url">
+                <Input @bind-Value="@context.GitUrl" />
+            </FormItem>
+        </GridCol>
+    </Row>
+</Form>
+
+<Divider Orientation="left">常用分支</Divider>
+
+<Form @ref="_CommonBranch_Form" Model="@commonBranchModel">
+    <Row Gutter="24">
+        <GridCol Span="6">
+            <FormItem Label="别名">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="分支名">
+                <Input @bind-Value="@context.BranchName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="4">
+            <FormItem Label="版本">
+                <Input @bind-Value="@context.Version" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <FormItem Label="备注">
+                <Input @bind-Value="@context.Remark" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <Button Type="@ButtonType.Primary" HtmlType="button" OnClick="AddCommonBranch">
+                Add
+            </Button>
+        </GridCol>
+    </Row>
+</Form>
+
+<Table @ref="table"
+       TItem="CommonBranchModel"
+       DataSource="@projectModel.CommonBranchList"
+       OnChange="OnChange">
+    <Selection Key="@(context.Id)" />
+    <Column @bind-Field="@context.Name" Sortable />
+    <Column @bind-Field="@context.BranchName" Sortable >
+        @context.BranchName &nbsp;
+        @if (!string.IsNullOrEmpty(@context.JiraId(projectModel.JiraIdPrefix)))
+        {
+            <a href="@setupModel.JiraUrl(@context.JiraId())" target="_blank">@context.JiraId</a>
+        }
+    </Column>
+    <Column @bind-Field="@context.Remark" Sortable />
+    <ActionColumn>
+        <Space>
+            <SpaceItem><Button OnClick="()=>EditCommonBranch(context.Id)">编辑</Button></SpaceItem>
+        </Space>
+        <Space>
+            <SpaceItem>
+                <Popconfirm Placement="@Placement.TopRight" Title="确认移除？" OnConfirm="()=>RemoveCommonBranch(context.Id)">
+                    <Button Danger>移除</Button>
+                </Popconfirm>
+            </SpaceItem>
+        </Space>
+    </ActionColumn>
+</Table>
+
+<Button Type="@ButtonType.Primary" HtmlType="button" OnClick="OnSave">
+    保存
+</Button>
+
+@code
+{
+    [Parameter]
+    public string Id { get; set; }
+
+    Form<ProjectModel> _form;
+    Form<CommonBranchModel> _CommonBranch_Form;
+
+    ITable table;
+    private List<ProjectModel> projectModelList;
+    private ProjectModel projectModel;
+    private CommonBranchModel commonBranchModel;
+    private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
+    SetupModel setupModel;
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
+    {
+        setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
+        projectModelList = configService.GetEntityList() ?? new List<ProjectModel>();
+
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            projectModel = projectModelList.FirstOrDefault(a => a.Id == Id);
+            if (projectModel == null)
+                await _message.Warning($"项目 {Id} 不存在");
+        }
+
+        if (projectModel == null)
+            projectModel = new ProjectModel();
+
+        if (commonBranchModel == null)
+            commonBranchModel = new CommonBranchModel();
+    }
+
+    public async Task OnChange(QueryModel<CommonBranchModel> queryModel)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(queryModel));
+    }
+
+    private void OnSave()
+    {
+        if (!_form.Validate())
+            return;
+
+        if (projectModelList.Any(a => a.ProjectName == projectModel.ProjectName && a.Id != projectModel.Id))
+        {
+            _message.Error($"项目 {projectModel.ProjectName} 已存在，无法新增");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectModel.Id))
+        {
+            projectModel.Id = Guid.NewGuid().ToString();
+            projectModelList.Add(projectModel);
+        }
+
+        configService.Save(projectModelList);
+
+        _message.Success($"项目 {projectModel.ProjectName} 保存成功:{configService.GetConfigFilePath()}");
+
+        projectModel = new ProjectModel();
+    }
+
+    private void RemoveCommonBranch(string id)
+    {
+        projectModel.CommonBranchList.RemoveAll(a => a.Id == id);
+    }
+
+    private void EditCommonBranch(string id)
+    {
+        commonBranchModel = projectModel.CommonBranchList.FirstOrDefault(a => a.Id == id);
+    }
+
+    private void AddCommonBranch()
+    {
+        if (string.IsNullOrWhiteSpace(commonBranchModel.Name))
+        {
+            _message.Error($"请输入分支别名");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(commonBranchModel.BranchName))
+        {
+            _message.Error($"请输入分支名");
+            return;
+        }
+
+        if (projectModel.CommonBranchList.Any(a => a.Name == commonBranchModel.Name && a.Id != commonBranchModel.Id))
+        {
+            _message.Error($"分支 {commonBranchModel.Name} 已存在，无法新增");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(commonBranchModel.Id))
+        {
+            commonBranchModel.Id = Guid.NewGuid().ToString();
+            projectModel.CommonBranchList.Add(commonBranchModel);
+        }
+        commonBranchModel = new CommonBranchModel();
+    }
+}

@@ -1,0 +1,670 @@
+﻿@page "/project"
+
+@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations;
+@using System.Text.Json;
+@using System.Linq;
+@using AntDesign.TableModels
+@using JiraWorkSpace.MAUI.Data
+@using System.Text
+@using System.Diagnostics
+@using JiraWorkSpace.MAUI.Data.Project
+@using JiraWorkSpace.MAUI.Data.Setup
+@inject NavigationManager NavigationManager
+@inject MessageService _message
+@inject ModalService ModalService
+@inject IJSRuntime js
+
+
+<style>
+    .projectRow {
+        /*background-color: #fff1f0;*/
+    }
+
+    .branchRow {
+        /*background-color: #cccccc;*/
+    }
+</style>
+
+<Form Model="searchFormModel" @ref="_form" Name="advanced_search">
+    <Row Gutter="24">
+        <GridCol Span="6">
+            <FormItem Label="项目">
+                <Input @bind-Value="@context.ProjectName" Placeholder="ProjectName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="6">
+            <Button Type="primary" HtmlType="button" OnClick="Search">查询</Button>
+            <Button Type="primary" HtmlType="button" OnClick="NavigateToAdd">添加</Button>
+            <Button Type="primary" HtmlType="button" OnClick="Backup">备份</Button>
+            <InputFile id="fileInput" OnChange="Import" hidden />
+            <Upload Name="file">
+                <label class="ant-btn" for="fileInput">导入</label>
+            </Upload>
+        </GridCol>
+    </Row>
+</Form>
+
+<Table @ref="table"
+       TItem="ProjectModel"
+       DataSource="@projectList"
+       Size=TableSize.Small
+       RowExpandable="@((record)=>true)"
+       RowClassName="@(x => x.Data.RowClass)">
+
+    <RowTemplate>
+        <Column @bind-Field="@context.ProjectName" Sortable />
+        <Column @bind-Field="@context.CodeDirectory">
+            <Button Type="@ButtonType.Link" OnClick="()=>OpenDir(context.CodeDirectory)">@context.CodeDirectory</Button>
+        </Column>
+        <Column @bind-Field="@context.CurrentBranch">
+            <Row>
+                @context.CurrentBranch
+            </Row>
+            <Row>
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OnGitCommandPull(context.CodeDirectory)" Size="@ButtonSize.Small">pull</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)" Size="@ButtonSize.Small">commit</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitSync(context.CodeDirectory)" Size="@ButtonSize.Small">sync</Button>&nbsp
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)" Size="@ButtonSize.Small">checkout</Button>
+            </Row>
+        </Column>
+        <Column @bind-Field="@context.GitUrl">
+            <a href="@context.GitUrl" target="_blank">@context.GitUrl</a>
+        </Column>
+        <ActionColumn>
+            <Space>
+                <SpaceItem><Button OnClick="()=>Edit(context.Id)">编辑</Button></SpaceItem>
+                <SpaceItem>
+                    <Popconfirm Placement="@Placement.TopRight" Title="确认删除？" OnConfirm="()=>Delete(context.Id)">
+                        <Button Danger>删除项目</Button>
+                    </Popconfirm>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </RowTemplate>
+
+    <ExpandTemplate Context="rowData">
+        <Table DataSource="rowData.Data.CommonBranchList" 
+            Loading="rowData.Data.CommonBranchList==null" 
+            PageSize="20" 
+            HidePagination 
+            RowClassName="@(x => x.Data.RowClass)"
+            Size=@TableSize.Small>
+            <Column TData="string" DataIndex="Name" />
+            <Column TData="string" DataIndex="BranchName">
+                @context.BranchName &nbsp;
+                @if (!string.IsNullOrEmpty(@context.JiraId))
+                {
+                    <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a>
+                }
+            </Column>
+            <Column TData="string" DataIndex="Version"></Column>
+            <Column TData="string" DataIndex="Remark"></Column>
+            <ActionColumn>
+                <Tooltip Title="@("基于此分支创建【开发分支】")">
+                    <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCreateFeatureBranchModal(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">创建分支</Button>
+                </Tooltip>
+                <Tooltip Title="@("切换到【当前分支】")">
+                    <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>CheckoutBranchById(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">切换分支</Button>
+                </Tooltip>
+                <Tooltip Title="@("发起【此分支】到【版本分支】的合并请求")">
+                    <Button Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenMergeRequest(rowData.Data.Id,context.Id)" Size="@ButtonSize.Small">合并请求</Button>
+                </Tooltip>
+                <Popconfirm Placement="@Placement.TopRight" Title="确认移除？" OnConfirm="()=>RemoveBranch(rowData.Data.Id,context.Id)">
+                    <Tooltip Title="@("从常用分支列表中移除")">
+                        <Button Danger Type="@ButtonType.Dashed" Loading="opLoading" Size="@ButtonSize.Small">移除</Button>
+                    </Tooltip>
+                </Popconfirm>
+            </ActionColumn>
+        </Table>
+    </ExpandTemplate>
+    
+    <PaginationTemplate>
+        <div style="padding-top:10px;">
+            <Row>
+                <Col Span="8">
+                共 @total 个
+                </Col>
+                <Col Span="8" Offset="8">
+                <Pagination Class="my-custom-pagination"
+                            Total="@total"
+                            PageSize="pageSize"
+                            Current="pageIndex"
+                            ShowSizeChanger="@true"
+                            OnChange="OnChange" />
+                </Col>
+            </Row>
+        </div>
+    </PaginationTemplate>
+</Table>
+
+<Modal Title="@("Create Feature Branch")"
+       Visible="@CreateFeatureBranchVisible"
+       OnOk="@CreateFeatureBranchHandleOk"
+       OnCancel="@CreateFeatureBranchHandleCancel">
+    <Form Loading="loading" Model="@createFeatureBranchModel"
+          LabelColSpan="6"
+          WrapperColSpan="18"
+          OnFinish="OnCreateBranch"
+          @ref="@CreateFeatureBranchform">
+
+        <FormItem Label="项目">
+            <Input ReadOnly @bind-Value="@context.Project.ProjectName" />
+        </FormItem>
+
+        <FormItem Label="环境">
+            <Input ReadOnly @bind-Value="@context.CommonBranch.Name" />
+        </FormItem>
+
+        <FormItem Label="环境分支">
+            <Input ReadOnly @bind-Value="@context.CommonBranch.BranchName" />
+        </FormItem>
+
+        <FormItem Label="分支类型">
+            <Select Mode="BranchTypeModel"
+                    DataSource="@BranchTypes"
+                    @bind-Value="@context.BranchType"
+                    LabelName="@nameof(BranchTypeModel.Name)"
+                    ValueName="@nameof(BranchTypeModel.Name)">
+            </Select>
+        </FormItem>
+        <FormItem Label="JiraId">
+            <Input @bind-Value="@context.JiraKey" />
+        </FormItem>
+        <FormItem Label="BranchDesc">
+            <Input @bind-Value="@context.BranchDesc" />
+        </FormItem>
+    </Form>
+</Modal>
+
+<Modal Title="@("输出")"
+       Visible="@CmdOutputVisible"
+       OnOk="@CmdOutputHandleOk"
+       Style="width: 860px; height:720px;"
+       OnCancel="@CmdOutputhHandleCancel">
+    <TextArea Id="txaCmdOutput" Rows="12" ReadOnly @bind-Value="@CmdOutputContent" />
+</Modal>
+
+@code {
+    private bool opLoading { get; set; } = false;
+
+    public class SearchFormModel
+    {
+        public string ProjectName { get; set; }
+    }
+    public class BranchTypeModel
+    {
+        public BranchTypeModel(string name)
+        {
+            Name = name;
+        }
+        public string Name { get; set; }
+    }
+
+    List<BranchTypeModel> BranchTypes = new List<BranchTypeModel> { new BranchTypeModel("feature"), new BranchTypeModel("hotfix") };
+    AntDesign.Internal.IForm _form;
+    SearchFormModel searchFormModel = new SearchFormModel();
+    List<ProjectModel> projectList;
+    SetupModel setupModel;
+    private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
+
+    ITable table;
+
+    int pageIndex = 1;
+    int pageSize = 10;
+    int total = 0;
+
+    private void NavigateToAdd()
+    {
+        NavigationManager.NavigateTo("/project/setup/", false);
+    }
+
+    private async void Backup()
+    {
+        var configFilePath = configService.GetConfigFilePath();
+        string tPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        var fileName = $"{DateTime.Now.ToString("yyyyMMddHHmmss")}_{new FileInfo(configFilePath).Name}";
+
+        File.Copy(configFilePath, tPath + "/" + fileName);
+
+
+        //https://docs.microsoft.com/zh-cn/aspnet/core/blazor/file-downloads?view=aspnetcore-6.0
+    }
+
+    private async void Import(InputFileChangeEventArgs e)
+    {
+        var configFilePath = configService.GetConfigFilePath();
+        var iFile = e.GetMultipleFiles().FirstOrDefault();
+
+        await using FileStream fs = new(configFilePath, FileMode.OpenOrCreate);
+        await iFile.OpenReadStream().CopyToAsync(fs);
+    }
+
+    private void Search()
+    {
+        GetProjectList(pageIndex, pageSize);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
+        GetProjectList(pageIndex, pageSize);
+    }
+
+    private string GetCurrentBranch(string codeDirectory)
+    {
+        try
+        {
+            string currentBranch = new GitUtility(codeDirectory).ExcuteGitCommand("symbolic-ref --short -q HEAD");
+            currentBranch = currentBranch.Replace("\n", "").Replace("\t", "").Replace("\r", "").Trim();
+            return currentBranch;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    private void GetProjectList(int pageIndex, int pageSize)
+    {
+        var resList = configService.GetEntityList() ?? new List<ProjectModel>();
+        if (!string.IsNullOrWhiteSpace(searchFormModel.ProjectName))
+        {
+            resList = resList.Where(a => a.ProjectName.Contains(searchFormModel.ProjectName)).ToList();
+        }
+
+        projectList = resList.OrderBy(a => a.ProjectName).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+        foreach (var item in projectList)
+        {
+            Task.Run(() => { item.CurrentBranch = GetCurrentBranch(item.CodeDirectory); });
+        }
+        total = projectList.Count;
+    }
+
+    public void OnChange(PaginationEventArgs args)
+    {
+        if (pageIndex != args.Page)
+        {
+            pageIndex = args.Page;
+        }
+
+        if (pageSize != args.PageSize)
+        {
+            pageSize = args.PageSize;
+        }
+        GetProjectList(pageIndex, pageSize);
+    }
+
+    private void Delete(string id)
+    {
+        projectList.RemoveAll(a => a.Id == id);
+        total = projectList.Count;
+        configService.Save(projectList);
+
+        _message.Success("删除成功");
+    }
+
+    private void OpenDir(string codeDirectory)
+    {
+        System.Diagnostics.Process.Start("explorer.exe", codeDirectory);
+    }
+
+    private void Edit(string id)
+    {
+        NavigationManager.NavigateTo($"/project/setup/{id}", false);
+    }
+
+    private void OpenMergeRequest(string projectId, string commonBranchId)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error($"项目不存在:{projectId}");
+            return;
+        }
+        var commonBranch = project.CommonBranchList.FirstOrDefault(a => a.Id == commonBranchId);
+        if (commonBranch == null)
+        {
+            _message.Error($"分支不存在:{commonBranchId}");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(commonBranch.Version))
+        {
+            _message.Error($"未设置版本:{commonBranch.Name}");
+            return;
+        }
+
+        try
+        {
+            MergeRequest.OpenMergeRequest(project.GitUrl, commonBranch.BranchName, $"version/{commonBranch.Version}", "GitLab");
+        }
+        catch (Exception ex)
+        {
+            _message.Error($"异常:{ex.Message}");
+            return;
+        }
+    }
+
+    private void RemoveBranch(string projectId, string commonBranchId)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error($"项目不存在:{projectId}");
+            return;
+        }
+        var commonBranch = project.CommonBranchList.FirstOrDefault(a => a.Id == commonBranchId);
+        if (commonBranch == null)
+        {
+            _message.Error($"分支不存在:{commonBranchId}");
+            return;
+        }
+
+        try
+        {
+            project.CommonBranchList.RemoveAll(a => a.Id == commonBranchId);
+            configService.Save(projectList);
+            _message.Success("删除成功");
+        }
+        catch (Exception ex)
+        {
+            _message.Error($"异常:{ex.Message}");
+            return;
+        }
+    }
+
+    private void OpenCreateFeatureBranchModal(string projectId, string commonBranchId)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error($"项目不存在:{projectId}");
+            return;
+        }
+
+        var commonBranch = project.CommonBranchList.FirstOrDefault(a => a.Id == commonBranchId);
+        if (commonBranch == null)
+        {
+            _message.Error($"分支不存在:{commonBranchId}");
+            return;
+        }
+
+        createFeatureBranchModel.Project = project;
+        createFeatureBranchModel.CommonBranch = commonBranch;
+        CreateFeatureBranchVisible = true;
+    }
+
+    private ModalRef _modalRef;
+    private async void OpenCheckoutBranchList(string projectId, string codeDirectory)
+    {
+        var modalConfig = new ModalOptions();
+        modalConfig.Title = "选择分支";
+        modalConfig.Style = "top:20px;";
+        // In order for Dispose in ConfirmTemplateDemo to take effect every time it is closed
+        modalConfig.DestroyOnClose = true;
+
+        var modalRefTask = ModalService.CreateModalAsync<BranchListModal, string, string>(modalConfig, codeDirectory);
+        modalRefTask.Wait();
+        var modalRef = modalRefTask.Result;
+
+        modalRef.OnOk = (result) =>
+        {
+            return Task.Run(() => CheckoutBranch(projectId, result));
+        };
+
+        modalRef.OnCancel = (result) =>
+        {
+            return Task.CompletedTask;
+        };
+    }
+
+    private void CheckoutBranchById(string projectId, string commonBranchId)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error("项目不存在");
+            return;
+        }
+
+        var commonBranch = project.CommonBranchList.FirstOrDefault(a => a.Id == commonBranchId);
+        if (commonBranch == null)
+        {
+            _message.Error("分支不存在");
+            return;
+        }
+
+        CheckoutBranch(projectId, commonBranch.BranchName);
+    }
+
+    private void CheckoutBranch(string projectId, string branchName)
+    {
+        var project = projectList.FirstOrDefault(a => a.Id == projectId);
+        if (project == null)
+        {
+            _message.Error("项目不存在");
+            return;
+        }
+
+        CheckoutBranch(project, branchName);
+    }
+
+    private void CheckoutBranch(ProjectModel project, string branchName)
+    {
+        var currentBranch = GetCurrentBranch(project.CodeDirectory);
+        if (currentBranch == branchName)
+        {
+            _message.Success($"当前分支{currentBranch}，无需切换");
+            return;
+        }
+
+        opLoading = true;
+        CmdOutputVisible = true;
+        new GitUtility(project.CodeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived($"checkout {branchName}");
+        currentBranch = GetCurrentBranch(project.CodeDirectory);
+        if (currentBranch == branchName)
+        {
+            _message.Success("切换成功");
+            project.CurrentBranch = currentBranch;
+
+            if (!project.CommonBranchList.Any(a => a.BranchName == branchName))
+            {
+                project.CommonBranchList.Insert(0, new CommonBranchModel { BranchName = branchName, Id = Guid.NewGuid().ToString(), Name = "", Remark = "" });
+                configService.Save(projectList);
+            }
+        }
+        else
+        {
+            _message.Error("切换失败，请手动切换");
+        }
+        opLoading = false;
+    }
+}
+
+@code {
+    public class CreateFeatureBranchModel
+    {
+        [Required]
+        public string BranchType { get; set; }
+        [Required]
+        public string JiraKey { get; set; }
+        public string JiraDesc { get; set; }
+        [Required]
+        public string BranchDesc { get; set; }
+
+        public ProjectModel Project { get; set; }
+        public CommonBranchModel CommonBranch { get; set; }
+    }
+
+    private CreateFeatureBranchModel createFeatureBranchModel = new CreateFeatureBranchModel();
+
+    bool loading = false;
+
+    void toggle(bool value) => loading = value;
+
+    private bool CreateFeatureBranchVisible = false;
+
+    private void CreateFeatureBranchHandleCancel(MouseEventArgs e)
+    {
+        CreateFeatureBranchVisible = false;
+    }
+
+    void CreateFeatureBranchHandleChange(string value)
+    {
+        _message.Info(value);
+    }
+
+    private Form<CreateFeatureBranchModel> CreateFeatureBranchform;
+
+    private async void OnGitCommandPull(string codeDirectory)
+    {
+        await Task.Run(() => { GitCommandPull(codeDirectory); });
+    }
+
+    private void GitCommandPull(string codeDirectory)
+    {
+        opLoading = true;
+        CmdOutputVisible = true;
+        new GitUtility(codeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived("pull");
+        opLoading = false;
+    }
+
+    private void GitCommandBranch(string codeDirectory, string branchName)
+    {
+        opLoading = true;
+        CmdOutputVisible = true;
+        new GitUtility(codeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived($"branch {branchName}");
+        opLoading = false;
+    }
+
+    private void TortoiseGitCommit(string codeDirectory)
+    {
+        var excuteMsg = new TortoiseGitUtility(codeDirectory).ExcuteCommand("/command:commit");
+        if (!string.IsNullOrWhiteSpace(excuteMsg))
+            _message.Info(excuteMsg);
+    }
+
+    private void TortoiseGitSync(string codeDirectory)
+    {
+        var excuteMsg = new TortoiseGitUtility(codeDirectory).ExcuteCommand("/command:sync");
+        if (!string.IsNullOrWhiteSpace(excuteMsg))
+            _message.Info(excuteMsg);
+    }
+
+    private async void OnCreateBranch(EditContext editContext)
+    {
+        loading = true;
+
+        if (setupModel == null)
+        {
+            _message.Warning("请设置-基本信息");
+            return;
+        }
+
+        CreateFeatureBranchVisible = false;
+        CmdOutput("开始执行创建");
+        await Task.Run(() =>
+        {
+            CreateBranch(setupModel.BranchRule, setupModel.AD);
+        });
+    }
+
+    private void CreateBranch(string branchRule,string ad)
+    {
+        try
+        {
+            var currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
+            if (currentBranch != createFeatureBranchModel.CommonBranch.BranchName)
+            {
+                CheckoutBranch(createFeatureBranchModel.Project, createFeatureBranchModel.CommonBranch.BranchName);
+            }
+
+            //
+            GitCommandPull(createFeatureBranchModel.Project.CodeDirectory);
+
+            //{JIRAKEY}-{AD}-{MMdd}-{BranchName}
+            string branchName = branchRule.Replace("{JIRAKEY}", createFeatureBranchModel.JiraKey);
+            branchName = branchName.Replace("{AD}", ad);
+            branchName = branchName.Replace("{MMdd}", DateTime.Now.ToString("MMdd"));
+            branchName = branchName.Replace("{BranchName}", createFeatureBranchModel.BranchDesc);
+            branchName = $"{createFeatureBranchModel.BranchType}/{branchName}";
+
+            //创建分支 branch
+            GitCommandBranch(createFeatureBranchModel.Project.CodeDirectory, branchName);
+
+            //签出新创建分支 checkout
+            CheckoutBranch(createFeatureBranchModel.Project, branchName);
+
+            //获取当前分支
+            currentBranch = GetCurrentBranch(createFeatureBranchModel.Project.CodeDirectory);
+            if (currentBranch == branchName)
+            {
+                createFeatureBranchModel.Project.CurrentBranch = currentBranch;
+                createFeatureBranchModel.BranchDesc = "";
+                createFeatureBranchModel.BranchType = "";
+                createFeatureBranchModel.JiraKey = "";
+                createFeatureBranchModel.JiraDesc = "";
+
+                _message.Success("创建成功");
+                CmdOutput("创建成功");
+            }
+            else
+            {
+                _message.Error("创建失败，请手动创建");
+                CmdOutput("创建失败，请手动创建");
+            }
+        }
+        catch (Exception ex)
+        {
+            _message.Error(ex.Message);
+            CmdOutput(ex.Message);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="e"></param>
+    private void CreateFeatureBranchHandleOk(MouseEventArgs e)
+    {
+        CreateFeatureBranchform.Submit();
+    }
+}
+
+@code {
+    private void CmdOutput(string cmdOutputContent)
+    {
+        Task.Run(() =>
+        {
+            if (!CmdOutputVisible)
+                CmdOutputVisible = true;
+            CmdOutputContent += $"{cmdOutputContent}{Environment.NewLine}";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private bool CmdOutputVisible = false;
+
+    private string CmdOutputContent { get; set; }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="e"></param>
+    private void CmdOutputHandleOk(MouseEventArgs e)
+    {
+        CmdOutputContent = "";
+        CmdOutputVisible = false;
+    }
+
+    private void CmdOutputhHandleCancel(MouseEventArgs e)
+    {
+        CmdOutputContent = "";
+        CmdOutputVisible = false;
+    }
+}

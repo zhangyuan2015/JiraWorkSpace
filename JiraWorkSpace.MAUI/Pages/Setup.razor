@@ -1,0 +1,90 @@
+﻿@page "/setup"
+
+@using System.Text.Json;
+@using JiraWorkSpace.MAUI.Data
+@using JiraWorkSpace.MAUI.Data.Setup
+@inject MessageService _message
+
+<Form Model="@setupModel"
+      OnFinish="OnFinish"
+      OnFinishFailed="OnFinishFailed">
+    <Divider Orientation="left">基本信息</Divider>
+    <Row Gutter="24">
+        <GridCol Span="8">
+            <FormItem Label="    AD">
+                <Input @bind-Value="@context.AD" />
+            </FormItem>
+        </GridCol>
+    </Row>
+    <Divider Orientation="left">代码配置</Divider>
+    <Row Gutter="24">
+        <GridCol Span="8">
+            <FormItem Label="Branch Rule" Help="@context.DefBranchRule">
+                <Input @bind-Value="@context.BranchRule" />
+            </FormItem>
+        </GridCol>
+    </Row>
+    <Divider Orientation="left">Jira接口配置</Divider>
+    <Row Gutter="24">
+        <GridCol Span="8">
+            <FormItem Label="Jira Domain">
+                <Input @bind-Value="@context.JiraDomain" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="8">
+            <FormItem Label="Jira Api Version">
+                <Input @bind-Value="@context.JiraApiVersion" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="8">
+            <FormItem Label="Jira UaseName">
+                <Input @bind-Value="@context.JiraUaseName" />
+            </FormItem>
+        </GridCol>
+        <GridCol Span="8">
+            <FormItem Label="Jira Api Token">
+                <Input @bind-Value="@context.JiraApiToken" />
+            </FormItem>
+        </GridCol>
+    </Row>
+
+    <FormItem WrapperColOffset="6" WrapperColSpan="12">
+        <Button Type="@ButtonType.Primary" HtmlType="submit">
+            保存
+        </Button>
+    </FormItem>
+</Form>
+
+@code
+{
+    private SetupModel setupModel;
+    private JiraWorkSpace.MAUI.Data.ConfigService<SetupModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel));
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
+    {
+        setupModel = configService.GetEntity() ?? new SetupModel();
+    }
+
+    private void OnFinish(EditContext editContext)
+    {
+        if (string.IsNullOrWhiteSpace(setupModel.BranchRule))
+            setupModel.BranchRule = setupModel.DefBranchRule;
+        try
+        {
+            configService.Save(setupModel);
+        }
+        catch (Exception ex)
+        {
+            _message.Error($"保存异常:{ex.Message}");
+        }
+    }
+
+    private void OnFinishFailed(EditContext editContext)
+    {
+        Console.WriteLine($"Failed:{JsonSerializer.Serialize(setupModel)}");
+    }
+}

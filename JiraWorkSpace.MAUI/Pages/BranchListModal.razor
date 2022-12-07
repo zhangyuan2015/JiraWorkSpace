@@ -1,0 +1,63 @@
+﻿@using JiraWorkSpace.MAUI.Data
+@inherits FeedbackComponent<string, string>
+
+<div>
+    <Text>操作目录 "@codeDirectory"</Text>
+    <br />
+    <Select DataSource="@branchNameList"
+            @bind-Value="@_selectedValue"
+            LabelName="@nameof(BranchName.Name)"
+            ValueName="@nameof(BranchName.Name)"
+            Placeholder="Select a Branch"
+            DefaultActiveFirstItem="false"
+            EnableSearch>
+    </Select>
+    <br />
+    @_selectedValue
+</div>
+
+@code {
+
+    class BranchName
+    {
+        public string Name { get; set; }
+    }
+
+    List<BranchName> branchNameList;
+    string _selectedValue;
+    string codeDirectory;
+
+    protected override void OnInitialized()
+    {
+        codeDirectory = this.Options;
+        var gitBranchMsg = new GitUtility(codeDirectory, false).ExcuteGitCommand("branch");
+        branchNameList = gitBranchMsg.Split("\n", StringSplitOptions.RemoveEmptyEntries).Select(a => new BranchName { Name = a.Trim() }).ToList();
+
+        base.OnInitialized();
+    }
+
+    public override async Task OnFeedbackOkAsync(ModalClosingEventArgs args)
+    {
+        if (FeedbackRef is ModalRef modalRef)
+        {
+            modalRef.Config.ConfirmLoading = true;
+            await modalRef.UpdateConfigAsync();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_selectedValue))
+        {
+            await base.OkCancelRefWithResult!.OnOk(_selectedValue);
+            await base.OnFeedbackOkAsync(args);
+        }
+    }
+
+    /// <summary>
+    /// If you want <b>Dispose</b> to take effect every time it is closed in Modal, which created by ModalService,
+    /// set <b>ModalOptions.DestroyOnClose = true</b>
+    /// </summary>
+    /// <param name="disposing"></param>
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+    }
+}

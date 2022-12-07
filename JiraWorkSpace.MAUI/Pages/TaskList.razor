@@ -1,0 +1,269 @@
+﻿@page "/task"
+
+@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations;
+@using System.Text.Json;
+@using AntDesign.TableModels
+@using JiraWorkSpace.MAUI.Data.Jira
+@using System.Text
+@using System.Diagnostics
+@using JiraWorkSpace.MAUI.Data.Setup
+
+<Form Model="searchFormModel" @ref="_form" Name="advanced_search">
+    <Row Gutter="24">
+        @if (_expand)
+        {
+            <GridCol Span="6">
+                <FormItem Label="项目">
+                    <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="Sprint">
+                    <Input @bind-Value="@context.Sprint" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="类型">
+                    <Input @bind-Value="@context.IssueType" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+            <GridCol Span="6">
+                <FormItem Label="经办人">
+                    <Input @bind-Value="@context.Assignee" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+
+
+            <GridCol Span="6">
+                <FormItem Label="状态">
+                    <Input @bind-Value="@context.Status" Placeholder="placeholder" />
+                </FormItem>
+            </GridCol>
+        }
+    </Row>
+    <Row>
+        <GridCol Span="24" Style="text-align:right;">
+            @if (_expand)
+            {
+                <Button Type="primary" HtmlType="submit">Search</Button>
+                <Button Style="margin: 0 8px;" OnClick="()=>{_form?.Reset();}">Clear</Button>
+            }
+            <a style="font-size:12px" @onclick="()=>{_expand=!_expand;}">
+                <Icon Type="@(_expand?"up":"down")"></Icon>  Collapse Search
+            </a>
+        </GridCol>
+    </Row>
+</Form>
+
+<Table @ref="table"
+       TItem="SearchItemModel"
+       DataSource="@itemList"
+       Size=TableSize.Small>
+    <ChildContent>
+        <Selection Key="@(context.Key)" />
+        <Column Field="@context.Key" Sortable />
+        <Column @bind-Field="@context.IssueType" Sortable />
+        <Column @bind-Field="@context.Summary" Sortable />
+        <Column @bind-Field="@context.Assignee" />
+        <Column @bind-Field="@context.Status" Sortable />
+        <ActionColumn>
+            <Space>
+                <SpaceItem><Button Danger OnClick="()=>Delete(context.Key)">Delete</Button></SpaceItem>
+            </Space>
+        </ActionColumn>
+    </ChildContent>
+
+    <PaginationTemplate>
+        <div style="padding-top:10px;">
+            <Row>
+                <Col Span="8">
+                共 @total 个
+                </Col>
+                <Col Span="8" Offset="8">
+                <Pagination Class="my-custom-pagination"
+                            Total="@total"
+                            PageSize="pageSize"
+                            Current="pageIndex"
+                            ShowSizeChanger="@true"
+                            OnChange="OnChange" />
+                </Col>
+            </Row>
+        </div>
+    </PaginationTemplate>
+</Table>
+
+<br />
+
+<h5>selections:</h5>
+@if (selectedRows != null && selectedRows.Any())
+{
+    <Button Danger Size="small" OnClick="@(e => { selectedRows = null; })">Clear</Button>
+
+    @foreach (var selected in selectedRows)
+    {
+        <Tag @key="selected.Key" Closable OnClose="e=>RemoveSelection(selected.Key)">@selected.Key - @selected.Summary</Tag>
+    }
+}
+
+@code {
+    public class SearchFormModel
+    {
+        public string Assignee { get; set; }
+        public string Sprint { get; set; }
+        public string Project { get; set; }
+        public string IssueType { get; set; }
+        public string Status { get; set; }
+    }
+
+    public class SearchItemModel
+    {
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("关键字")]
+        public string Key { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("类型")]
+        public string IssueType { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("状态")]
+        public string Status { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("概要")]
+        public string Summary { get; set; }
+
+        /// <summary>
+        ///
+        /// </summary>
+        [DisplayName("经办人")]
+        public string Assignee { get; set; }
+    }
+
+    SetupModel config;
+    private JiraWorkSpace.MAUI.Data.ConfigService<SetupModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel));
+
+    string ApiBaseUrl;
+    string ApiVersion;
+    string uName;
+    string password;
+
+    bool _expand = false;
+    AntDesign.Internal.IForm _form;
+    SearchFormModel searchFormModel = new SearchFormModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        config = configService.GetEntity() ?? new SetupModel();
+
+        ApiBaseUrl = $"{config.JiraDomain}/rest/api";
+        ApiVersion = config.JiraApiVersion;
+        uName = config.JiraUaseName;
+        password = config.JiraApiToken;
+
+        itemList = await GetIssueListAsync(pageIndex, pageSize);
+        total = itemList.Count;
+    }
+
+    List<SearchItemModel> itemList;
+
+    IEnumerable<SearchItemModel> selectedRows;
+    ITable table;
+
+    int pageIndex = 1;
+    int pageSize = 10;
+    int total = 0;
+
+    public async Task OnChange(PaginationEventArgs args)
+    {
+        if (pageIndex != args.Page)
+        {
+            pageIndex = args.Page;
+        }
+
+        if (pageSize != args.PageSize)
+        {
+            pageSize = args.PageSize;
+        }
+    }
+
+    private string GetEncodedCredentials()
+    {
+        string mergedCredentials = string.Format("{0}:{1}", uName, password);
+        byte[] byteCredentials = UTF8Encoding.UTF8.GetBytes(mergedCredentials);
+        return Convert.ToBase64String(byteCredentials);
+    }
+
+    public class DateTimeConverterUsingDateTimeParse : System.Text.Json.Serialization.JsonConverter<DateTime>
+    {
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            Debug.Assert(typeToConvert == typeof(DateTime));
+            return DateTime.Parse(reader.GetString() ?? string.Empty);
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    public Task<List<SearchItemModel>> GetIssueListAsync(int pageIndex, int pageSize)
+    {
+        JiraSearchRootDto rootDto = null;
+        try
+        {
+            var resStr = "";
+
+            string apiUrl = ApiBaseUrl + "/" + ApiVersion + "/" + "search?jql=issuetype in standardIssueTypes() order by created DESC";
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", "Basic " + GetEncodedCredentials());
+            Task<string> resTaskStr = client.GetStringAsync(apiUrl);
+            resTaskStr.Wait();
+            resStr = resTaskStr.Result;
+
+            //var resStr = new JiraApi(ApiBaseUrl + "/" + ApiVersion + "/", uName, password).DoQuery("search", "?jql=");
+
+            JsonSerializerOptions options = new JsonSerializerOptions();
+            options.Converters.Add(new DateTimeConverterUsingDateTimeParse());
+            rootDto = JsonSerializer.Deserialize<JiraSearchRootDto>(resStr, options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed:{ex.Message}");
+        }
+
+        return Task.FromResult((rootDto?.issues ?? new List<JiraIssueDto>()).Select(issue =>
+            {
+                return new SearchItemModel
+                    {
+                        Key = issue.key,
+                        IssueType = issue.fields.issuetype?.name,
+                        Status = issue.fields.status?.name,
+                        Summary = issue.fields.summary,
+                        Assignee = issue.fields.assignee?.name
+                    };
+            }).ToList());
+    }
+
+    public void RemoveSelection(string key)
+    {
+        var selected = selectedRows.Where(x => x.Key != key);
+        selectedRows = selected;
+    }
+
+    private void Delete(string key)
+    {
+        itemList = itemList.Where(x => x.Key != key).ToList();
+        total = itemList.Count;
+    }
+}
