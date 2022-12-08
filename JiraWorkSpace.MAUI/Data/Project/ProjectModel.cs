@@ -43,7 +43,7 @@ namespace JiraWorkSpace.MAUI.Data.Project
         public string GitUrl { get; set; }
 
         /// <summary>
-        /// feature/PRLMS-5059-
+        /// feature/*****-5059-
         /// </summary>
         [DisplayName("JiraIdPrefix")]
         public string JiraIdPrefix { get; set; }
@@ -83,7 +83,16 @@ namespace JiraWorkSpace.MAUI.Data.Project
         /// 
         /// </summary>
         [DisplayName("JiraId")]
-        public string JiraId { get { return string.IsNullOrWhiteSpace(JiraIdPrefix) ? "" : (BranchName.Contains(JiraIdPrefix) ? Regex.Match(BranchName, JiraIdPrefix + "-[0-9]{1,}").Value : ""); } }
+        public string JiraId { get; set; }
+
+        public static string GetJiraId(string branchName, string jiraIdPrefix)
+        {
+            if (!string.IsNullOrWhiteSpace(jiraIdPrefix))
+            {
+                return branchName.Contains(jiraIdPrefix) ? Regex.Match(branchName, jiraIdPrefix + "-[0-9]{1,}").Value : "";
+            }
+            return "";
+        }
 
         /// <summary>
         /// 

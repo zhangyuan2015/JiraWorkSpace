@@ -75,9 +75,9 @@
     <Column @bind-Field="@context.Name" Sortable />
     <Column @bind-Field="@context.BranchName" Sortable >
         @context.BranchName &nbsp;
-        @if (!string.IsNullOrEmpty(@context.JiraId(projectModel.JiraIdPrefix)))
+        @if (!string.IsNullOrEmpty(@context.JiraId) && setupModel != null)
         {
-            <a href="@setupModel.JiraUrl(@context.JiraId())" target="_blank">@context.JiraId</a>
+            <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a>
         }
     </Column>
     <Column @bind-Field="@context.Remark" Sortable />
@@ -121,6 +121,10 @@
     protected override async Task OnInitializedAsync()
     {
         setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
+        if (setupModel == null)
+        {
+            _message.Warn("请先设置基础信息");
+        }
         projectModelList = configService.GetEntityList() ?? new List<ProjectModel>();
 
         if (!string.IsNullOrWhiteSpace(Id))
@@ -158,6 +162,14 @@
             projectModel.Id = Guid.NewGuid().ToString();
             projectModelList.Add(projectModel);
         }
+
+        projectModelList.ForEach(projectModel =>
+        {
+            projectModel.CommonBranchList.ForEach(commonBranch =>
+            {
+                commonBranch.JiraId = CommonBranchModel.GetJiraId(commonBranch.BranchName, projectModel.JiraIdPrefix);
+            });
+        });
 
         configService.Save(projectModelList);
 

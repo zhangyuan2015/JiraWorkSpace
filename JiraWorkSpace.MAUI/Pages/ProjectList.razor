@@ -93,7 +93,7 @@
             <Column TData="string" DataIndex="Name" />
             <Column TData="string" DataIndex="BranchName">
                 @context.BranchName &nbsp;
-                @if (!string.IsNullOrEmpty(@context.JiraId))
+                @if (!string.IsNullOrEmpty(@context.JiraId) && setupModel != null)
                 {
                     <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a>
                 }
@@ -248,6 +248,10 @@
     protected override async Task OnInitializedAsync()
     {
         setupModel = new JiraWorkSpace.MAUI.Data.ConfigService<SetupModel>(nameof(SetupModel)).GetEntity();
+        if (setupModel == null)
+        {
+            _message.Warn("请先设置基础信息");
+        }
         GetProjectList(pageIndex, pageSize);
     }
 
@@ -470,7 +474,7 @@
 
             if (!project.CommonBranchList.Any(a => a.BranchName == branchName))
             {
-                project.CommonBranchList.Insert(0, new CommonBranchModel { BranchName = branchName, Id = Guid.NewGuid().ToString(), Name = "", Remark = "" });
+                project.CommonBranchList.Insert(0, new CommonBranchModel { BranchName = branchName, Id = Guid.NewGuid().ToString(), Name = "", Remark = "", JiraId = CommonBranchModel.GetJiraId(branchName, project.JiraIdPrefix) });
                 configService.Save(projectList);
             }
         }
