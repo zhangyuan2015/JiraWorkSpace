@@ -1,7 +1,4 @@
-﻿using System.ComponentModel;
-using System.Text.Json.Serialization;
-
-namespace JiraWorkSpace.MAUI.Data.Jira
+﻿namespace JiraWorkSpace.MAUI.Data.Jira
 {
     public class JiraIssueFieldDto
     {
@@ -9,21 +6,6 @@ namespace JiraWorkSpace.MAUI.Data.Jira
         /// 
         /// </summary>
         public string summary { get; set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public string description { get; set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public DateTime created { get; set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public DateTime updated { get; set; }
 
         /// <summary>
         /// 
@@ -38,11 +20,11 @@ namespace JiraWorkSpace.MAUI.Data.Jira
         /// <summary>
         /// 
         /// </summary>
-        public JiraIssuePriorityDto priority { get; set; }
+        public JiraIssueTypeDto issuetype { get; set; }
 
         /// <summary>
-        /// 
+        /// 版本JiraId
         /// </summary>
-        public JiraIssueTypeDto issuetype { get; set; }
+        public string customfield_11710 { get; set; }
     }
 }

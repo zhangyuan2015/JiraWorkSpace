@@ -98,7 +98,15 @@ namespace JiraWorkSpace.MAUI.Data.Project
         /// 
         /// </summary>
         [DisplayName("版本")]
-        public string Version { get; set; }
+        public string VersionName { get; set; }
+        
+        public string VersionJiraId { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [DisplayName("Jira状态")]
+        public string JiraStatus { get; set; }
 
         /// <summary>
         /// 

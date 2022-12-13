@@ -8,6 +8,8 @@
 @using JiraWorkSpace.MAUI.Data
 @using System.Text
 @using System.Diagnostics
+@using JiraWorkSpace.MAUI.Data.Cookie;
+@using JiraWorkSpace.MAUI.Data.Jira;
 @using JiraWorkSpace.MAUI.Data.Project
 @using JiraWorkSpace.MAUI.Data.Setup
 @inject NavigationManager NavigationManager
@@ -95,10 +97,15 @@
                 @context.BranchName &nbsp;
                 @if (!string.IsNullOrEmpty(@context.JiraId) && setupModel != null)
                 {
-                    <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a>
+                    <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a> <Tag>@context.JiraStatus</Tag>
                 }
             </Column>
-            <Column TData="string" DataIndex="Version"></Column>
+            <Column TData="string" DataIndex="VersionName">
+                @if (!string.IsNullOrEmpty(@context.VersionName) && setupModel != null)
+                {
+                    <a href="@setupModel.JiraUrl(@context.VersionJiraId)" target="_blank">@context.VersionName</a>
+                }
+            </Column>
             <Column TData="string" DataIndex="Remark"></Column>
             <ActionColumn>
                 <Tooltip Title="@("基于此分支创建【开发分支】")">
@@ -207,6 +214,7 @@
     List<ProjectModel> projectList;
     SetupModel setupModel;
     private JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel> configService = new JiraWorkSpace.MAUI.Data.ConfigService<ProjectModel>(nameof(ProjectModel));
+    List<CookieModel> cookieModels;
 
     ITable table;
 
@@ -252,7 +260,7 @@
         {
             _message.Warn("请先设置基础信息");
         }
-        GetProjectList(pageIndex, pageSize);
+        //GetProjectList(pageIndex, pageSize);
     }
 
     private string GetCurrentBranch(string codeDirectory)
@@ -278,9 +286,34 @@
         }
 
         projectList = resList.OrderBy(a => a.ProjectName).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+
+        cookieModels = new JiraWorkSpace.MAUI.Data.ConfigService<List<CookieModel>>(nameof(CookieModel)).GetEntity();
+        var jiraIds = projectList.SelectMany(a => a.CommonBranchList.Select(a => a.JiraId)).Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList();
+        var jiraInfoDics = GetJiraInfoList(jiraIds);
+
+        var versionIds = jiraInfoDics.Where(a => !string.IsNullOrWhiteSpace(a.Value?.fields?.customfield_11710)).Select(a => a.Value.fields.customfield_11710).Distinct().ToList();
+        var versionInfoDics = GetJiraInfoList(versionIds);
+
         foreach (var item in projectList)
         {
-            Task.Run(() => { item.CurrentBranch = GetCurrentBranch(item.CodeDirectory); });
+            Task.Run(() =>
+            {
+                item.CurrentBranch = GetCurrentBranch(item.CodeDirectory);
+            });
+            item.CommonBranchList.ForEach(a =>
+            {
+                JiraIssueDto jiraInfo;
+                jiraInfoDics.TryGetValue(a.JiraId, out jiraInfo);
+                a.JiraStatus = jiraInfo?.fields?.status?.name ?? "";
+                a.VersionJiraId = jiraInfo?.fields?.customfield_11710 ?? "";
+                
+                if (!string.IsNullOrWhiteSpace(a.VersionJiraId))
+                {
+                    JiraIssueDto versionInfo;
+                    versionInfoDics.TryGetValue(a.VersionJiraId, out versionInfo);
+                    a.VersionName = (versionInfo?.fields.summary ?? "").Replace(" ", "");
+                }
+            });
         }
         total = projectList.Count;
     }
@@ -333,7 +366,7 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(commonBranch.Version))
+        if (string.IsNullOrWhiteSpace(commonBranch.VersionName))
         {
             _message.Error($"未设置版本:{commonBranch.Name}");
             return;
@@ -341,7 +374,7 @@
 
         try
         {
-            MergeRequest.OpenMergeRequest(project.GitUrl, commonBranch.BranchName, $"version/{commonBranch.Version}", "GitLab");
+            MergeRequest.OpenMergeRequest(project.GitUrl, commonBranch.BranchName, $"version/{commonBranch.VersionName}", "GitLab");
         }
         catch (Exception ex)
         {
@@ -670,5 +703,44 @@
     {
         CmdOutputContent = "";
         CmdOutputVisible = false;
+    }
+}
+
+@code {
+    private Dictionary<string, JiraIssueDto> GetJiraInfoList(List<string> jiraIds)
+    {
+        Dictionary<string, JiraIssueDto> resDics = new Dictionary<string, JiraIssueDto>();
+        if (jiraIds != null && jiraIds.Any())
+        {
+            try
+            {
+                if (cookieModels == null)
+                    throw new Exception("未设置Cookie");
+
+                var jiraIssueSearchDto = HttpHelper.Get<JiraIssueSearchDto>(new Uri(setupModel.JiraDomain), $"rest/api/2/search?jql=issuekey in ({string.Join(",", jiraIds)})", cookieModels, new Dictionary<string, string>(), new Dictionary<string, string>());
+                foreach (var jiraId in jiraIds)
+                {
+                    resDics.Add(jiraId, jiraIssueSearchDto.issues.FirstOrDefault(a => a.key == jiraId));
+                }
+            }
+            catch (Exception ex)
+            {
+                foreach (var jiraId in jiraIds)
+                {
+                    resDics.Add(jiraId, new JiraIssueDto() { fields = new JiraIssueFieldDto { customfield_11710 = ex.Message, summary = ex.Message } });
+                }
+                return resDics;
+            }
+        }
+        return resDics;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="e"></param>
+    private string GetMeStatus(MouseEventArgs e)
+    {
+        return "";
     }
 }

@@ -24,6 +24,7 @@ namespace JiraWorkSpace.MAUI.Data
 
         public static void OpenDefaultBrowserUrl(string url)
         {
+            //var aaa = System.Web.HttpUtility.UrlEncode(url);
             //计算机\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice
             //ChromeHTML
             var userChoiceProgid = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice\").GetValue("Progid").ToString();

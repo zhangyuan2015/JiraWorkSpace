@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Work Space Cookie Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+
+<body style='height: 220px; width: 400px; padding: 20px; padding-top: 0'>
+    <div id="app">
+        <el-form :model="ruleForm" ref="ruleForm" label-width="60px" class="demo-ruleForm">
+            <el-form-item label="jira域名" prop="jiraDomain">
+                <el-input type="url" v-model="ruleForm.jiraDomain" placeholder="" autocomplete="off"></el-input>
+            </el-form-item>
+
+            <el-form-item label="端口" prop="port">
+                <el-input type="number" v-model.number="ruleForm.port" placeholder="" autocomplete="off"></el-input>
+            </el-form-item>
+
+            <el-form-item label="结果" prop="result">
+                <el-input v-model.number="ruleForm.result" placeholder="" autocomplete="off"></el-input>
+            </el-form-item>
+
+            <el-form-item>
+                <el-button type="primary" @click="submitForm('ruleForm')">开始执行</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+    <script src="vue-2.6.10.js"></script>
+    <script src="element-ui-2.12.0.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

@@ -22,6 +22,8 @@ public static class MauiProgram
 
 		builder.Services.AddAntDesign();
 
-		return builder.Build();
+		HttpListenerService.Start();
+
+        return builder.Build();
 	}
 }

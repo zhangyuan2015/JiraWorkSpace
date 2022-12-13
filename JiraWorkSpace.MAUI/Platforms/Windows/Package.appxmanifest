@@ -22,7 +22,7 @@
 
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-      <uap:VisualElements  DisplayName="工作空间">
+      <uap:VisualElements  DisplayName="Jira-Git-工作台">
         <uap:DefaultTile/>
       </uap:VisualElements >
     </Application>
