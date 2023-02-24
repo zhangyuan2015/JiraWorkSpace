@@ -5,6 +5,7 @@
     /// </summary>
     public class CookieModel
     {
+        public const string AES_KEY = "3B5E7EE5A7FEBAE42D9B31BF0BDF4437";
         /*
 domain: "github.com"
 expirationDate: 1686661592.931744
@@ -72,17 +73,6 @@ value: "********"
         /// <summary>
         /// 
         /// </summary>
-        public string value
-        {
-            get
-            {
-                return AesEncryptHelper.Decrypt(_value, "2504700");
-            }
-            set
-            {
-                _value = AesEncryptHelper.Decrypt(value, "2504700");
-            }
-        }
-        private string _value;
+        public string value { get; set; }
     }
 }

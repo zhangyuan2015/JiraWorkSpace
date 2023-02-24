@@ -35,7 +35,7 @@ namespace JiraWorkSpace.MAUI.Data
                 CookieCollection cookies = new CookieCollection();
                 foreach (var cookieItem in cookieModels)
                 {
-                    cookies.Add(new System.Net.Cookie(cookieItem.name.Trim(), cookieItem.value.Trim(), cookieItem.path, cookieItem.domain));
+                    cookies.Add(new System.Net.Cookie(cookieItem.name.Trim(), System.Web.HttpUtility.UrlEncode(cookieItem.value.Trim()), cookieItem.path, cookieItem.domain));
                 }
                 cookieContainer.Add(cookies);
             }

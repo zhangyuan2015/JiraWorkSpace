@@ -6,5 +6,10 @@
         /// 
         /// </summary>
         public string name { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool subtask { get; set; }
     }
 }

@@ -10,6 +10,11 @@
         /// <summary>
         /// 
         /// </summary>
+        public JiraIssueSubTaskDto parent { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public JiraIssueAssigneeDto assignee { get; set; }
 
         /// <summary>

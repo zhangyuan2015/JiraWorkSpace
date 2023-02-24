@@ -99,7 +99,13 @@ namespace JiraWorkSpace.MAUI.Data.Project
         /// </summary>
         [DisplayName("版本")]
         public string VersionName { get; set; }
-        
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [DisplayName("合并标签")]
+        public List<string> MergeTags { get; set; }
+
         public string VersionJiraId { get; set; }
 
         /// <summary>

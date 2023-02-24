@@ -103,8 +103,8 @@ namespace JiraWorkSpace.MAUI.Data
                     var jiraCookies = cookies.Where(a => a.domain == new Uri(setupModel.JiraDomain).Host).ToList();
                     if (jiraCookies.Any())
                     {
-                        ConfigService<List<CookieModel>> cookieConfigService = new ConfigService<List<CookieModel>>(nameof(CookieModel));
-                        cookieConfigService.Save(jiraCookies);
+                        ConfigService<CookieModel> cookieConfigService = new ConfigService<CookieModel>(nameof(CookieModel));
+                        cookieConfigService.Save(jiraCookies, true);
                     }
                 }
             }

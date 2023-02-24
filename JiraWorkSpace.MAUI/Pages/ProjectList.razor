@@ -68,6 +68,7 @@
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)" Size="@ButtonSize.Small">commit</Button>&nbsp
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitSync(context.CodeDirectory)" Size="@ButtonSize.Small">sync</Button>&nbsp
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)" Size="@ButtonSize.Small">checkout</Button>
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OnGitCommandRebase(context.CodeDirectory)" Size="@ButtonSize.Small">rebase</Button>
             </Row>
         </Column>
         <Column @bind-Field="@context.GitUrl">
@@ -104,6 +105,16 @@
                 @if (!string.IsNullOrEmpty(@context.VersionName) && setupModel != null)
                 {
                     <a href="@setupModel.JiraUrl(@context.VersionJiraId)" target="_blank">@context.VersionName</a>
+                }
+            </Column>
+            <Column TData="List<string>" DataIndex="MergeTags">
+                @if (@context.MergeTags != null)
+                {
+                    @for (int i = 0; i < @context.MergeTags.Count; i++)
+                    {
+                        int index = i;
+                        <Tag>@context.MergeTags[index]</Tag>
+                    }
                 }
             </Column>
             <Column TData="string" DataIndex="Remark"></Column>
@@ -287,32 +298,63 @@
 
         projectList = resList.OrderBy(a => a.ProjectName).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
 
-        cookieModels = new JiraWorkSpace.MAUI.Data.ConfigService<List<CookieModel>>(nameof(CookieModel)).GetEntity();
+        cookieModels = new JiraWorkSpace.MAUI.Data.ConfigService<CookieModel>(nameof(CookieModel)).GetEntityList(true);
         var jiraIds = projectList.SelectMany(a => a.CommonBranchList.Select(a => a.JiraId)).Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList();
         var jiraInfoDics = GetJiraInfoList(jiraIds);
-
         var versionIds = jiraInfoDics.Where(a => !string.IsNullOrWhiteSpace(a.Value?.fields?.customfield_11710)).Select(a => a.Value.fields.customfield_11710).Distinct().ToList();
+
+        //如果没有挂版本并且是子任务，获取父任务数据(版本信息)
+        var parentIds = jiraInfoDics.Where(a => string.IsNullOrWhiteSpace(a.Value?.fields?.customfield_11710) && (a.Value?.fields?.issuetype?.subtask ?? false)).Select(a => a.Value?.fields?.parent?.key ?? "").Distinct().ToList();
+        var parentDics = GetJiraInfoList(parentIds);
+        versionIds.AddRange(parentDics.Where(a => !string.IsNullOrWhiteSpace(a.Value?.fields?.customfield_11710)).Select(a => a.Value.fields.customfield_11710).Distinct().ToList());
+
         var versionInfoDics = GetJiraInfoList(versionIds);
 
         foreach (var item in projectList)
         {
             Task.Run(() =>
             {
-                item.CurrentBranch = GetCurrentBranch(item.CodeDirectory);
+                var branchName = GetCurrentBranch(item.CodeDirectory);
+                item.CurrentBranch = branchName;
+                if (!item.CommonBranchList.Any(a => a.BranchName == branchName))
+                {
+                    item.CommonBranchList.Insert(0, new CommonBranchModel { BranchName = branchName, Id = Guid.NewGuid().ToString(), Name = "", Remark = "", JiraId = CommonBranchModel.GetJiraId(branchName, item.JiraIdPrefix) });
+                    configService.Save(projectList);
+                }
             });
             item.CommonBranchList.ForEach(a =>
             {
                 JiraIssueDto jiraInfo;
-                jiraInfoDics.TryGetValue(a.JiraId, out jiraInfo);
-                a.JiraStatus = jiraInfo?.fields?.status?.name ?? "";
-                a.VersionJiraId = jiraInfo?.fields?.customfield_11710 ?? "";
-                
+                if (!jiraInfoDics.TryGetValue(a.JiraId, out jiraInfo))
+                    return;
+
+                a.JiraStatus = jiraInfo.fields?.status?.name ?? "";
+
+                if (string.IsNullOrWhiteSpace(jiraInfo.fields?.customfield_11710) && (jiraInfo.fields?.issuetype?.subtask ?? false))
+                {
+                    JiraIssueDto parentJiraInfo;
+                    if (parentDics.TryGetValue(jiraInfo.fields?.parent?.key, out parentJiraInfo))
+                    {
+                        a.VersionJiraId = parentJiraInfo.fields?.customfield_11710 ?? "";
+                    }
+                }
+                else
+                {
+                    a.VersionJiraId = jiraInfo.fields?.customfield_11710 ?? "";
+                }
+                a.VersionName = "";
                 if (!string.IsNullOrWhiteSpace(a.VersionJiraId))
                 {
                     JiraIssueDto versionInfo;
                     versionInfoDics.TryGetValue(a.VersionJiraId, out versionInfo);
                     a.VersionName = (versionInfo?.fields.summary ?? "").Replace(" ", "");
                 }
+
+                a.MergeTags = new List<string>();
+                //a.MergeTags.Add("已合version");
+                //a.MergeTags.Add("已合test");
+                //a.MergeTags.Add("已合stag");
+                //a.MergeTags.Add("已合master");
             });
         }
         total = projectList.Count;
@@ -567,6 +609,19 @@
         opLoading = false;
     }
 
+    private async void OnGitCommandRebase(string codeDirectory)
+    {
+        await Task.Run(() => { GitCommandRebase(codeDirectory); });
+    }
+
+    private void GitCommandRebase(string codeDirectory)
+    {
+        opLoading = true;
+        CmdOutputVisible = true;
+        new GitUtility(codeDirectory, (result) => { CmdOutput(result); }, true).ExcuteGitCommandReceived("pull --rebase origin master");
+        opLoading = false;
+    }
+
     private void GitCommandBranch(string codeDirectory, string branchName)
     {
         opLoading = true;
@@ -709,6 +764,7 @@
 @code {
     private Dictionary<string, JiraIssueDto> GetJiraInfoList(List<string> jiraIds)
     {
+        jiraIds = jiraIds.Distinct().ToList();
         Dictionary<string, JiraIssueDto> resDics = new Dictionary<string, JiraIssueDto>();
         if (jiraIds != null && jiraIds.Any())
         {
@@ -733,14 +789,5 @@
             }
         }
         return resDics;
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="e"></param>
-    private string GetMeStatus(MouseEventArgs e)
-    {
-        return "";
     }
 }
