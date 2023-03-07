@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace JiraWorkSpace.MAUI.Data.Jira
+﻿namespace JiraWorkSpace.MAUI.Data.Jira
 {
     public class JiraIssueDto
     {

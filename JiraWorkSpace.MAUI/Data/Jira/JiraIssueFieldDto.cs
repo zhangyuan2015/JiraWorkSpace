@@ -10,7 +10,7 @@
         /// <summary>
         /// 
         /// </summary>
-        public JiraIssueSubTaskDto parent { get; set; }
+        public JiraIssueDto parent { get; set; }
 
         /// <summary>
         /// 
@@ -31,5 +31,11 @@
         /// 版本JiraId
         /// </summary>
         public string customfield_11710 { get; set; }
+
+        /// <summary>
+        /// 英文描述
+        /// 分支名称
+        /// </summary>
+        public string customfield_11100 { get; set; }
     }
 }

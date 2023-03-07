@@ -335,6 +335,7 @@
                     JiraIssueDto parentJiraInfo;
                     if (parentDics.TryGetValue(jiraInfo.fields?.parent?.key, out parentJiraInfo))
                     {
+                        a.JiraStatus = (parentJiraInfo.fields?.status?.name ?? "") + "-" + a.JiraStatus;
                         a.VersionJiraId = parentJiraInfo.fields?.customfield_11710 ?? "";
                     }
                 }
