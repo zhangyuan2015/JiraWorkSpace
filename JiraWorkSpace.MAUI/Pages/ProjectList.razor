@@ -63,11 +63,14 @@
             <Row>
                 @context.CurrentBranch
             </Row>
+            <Row Style="color:red" >
+                @context.CurrentBranchVersionName
+            </Row>
             <Row>
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OnGitCommandPull(context.CodeDirectory)" Size="@ButtonSize.Small">pull</Button>&nbsp
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitCommit(context.CodeDirectory)" Size="@ButtonSize.Small">commit</Button>&nbsp
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>TortoiseGitSync(context.CodeDirectory)" Size="@ButtonSize.Small">sync</Button>&nbsp
-                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)" Size="@ButtonSize.Small">checkout</Button>
+                <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OpenCheckoutBranchList(context.Id,context.CodeDirectory)" Size="@ButtonSize.Small">checkout</Button>&nbsp
                 <Button Style="color:coral" Type="@ButtonType.Default" Loading="opLoading" OnClick="()=>OnGitCommandRebase(context.CodeDirectory)" Size="@ButtonSize.Small">rebase</Button>
             </Row>
         </Column>
@@ -98,7 +101,7 @@
                 @context.BranchName &nbsp;
                 @if (!string.IsNullOrEmpty(@context.JiraId) && setupModel != null)
                 {
-                    <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a> <Tag>@context.JiraStatus</Tag>
+                    <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank"><Tooltip Title="@context.JiraDesc">@context.JiraId</Tooltip></a> <Tag>@context.JiraStatus</Tag>
                 }
             </Column>
             <Column TData="string" DataIndex="VersionName">
@@ -310,9 +313,12 @@
 
         var versionInfoDics = GetJiraInfoList(versionIds);
 
+        List<Task> tasks = new List<Task>();
         foreach (var item in projectList)
         {
-            Task.Run(() =>
+            item.CurrentBranchVersionName = "";
+
+            tasks.Add(Task.Run(() =>
             {
                 var branchName = GetCurrentBranch(item.CodeDirectory);
                 item.CurrentBranch = branchName;
@@ -321,13 +327,14 @@
                     item.CommonBranchList.Insert(0, new CommonBranchModel { BranchName = branchName, Id = Guid.NewGuid().ToString(), Name = "", Remark = "", JiraId = CommonBranchModel.GetJiraId(branchName, item.JiraIdPrefix) });
                     configService.Save(projectList);
                 }
-            });
+            }));
             item.CommonBranchList.ForEach(a =>
             {
                 JiraIssueDto jiraInfo;
                 if (!jiraInfoDics.TryGetValue(a.JiraId, out jiraInfo))
                     return;
 
+                a.JiraDesc = jiraInfo.fields.summary;
                 a.JiraStatus = jiraInfo.fields?.status?.name ?? "";
 
                 if (string.IsNullOrWhiteSpace(jiraInfo.fields?.customfield_11710) && (jiraInfo.fields?.issuetype?.subtask ?? false))
@@ -349,6 +356,11 @@
                     JiraIssueDto versionInfo;
                     versionInfoDics.TryGetValue(a.VersionJiraId, out versionInfo);
                     a.VersionName = (versionInfo?.fields.summary ?? "").Replace(" ", "");
+
+                    if (string.Equals(item.CurrentBranch, a.BranchName))
+                    {
+                        item.CurrentBranchVersionName = a.VersionName;
+                    }
                 }
 
                 a.MergeTags = new List<string>();
@@ -358,6 +370,7 @@
                 //a.MergeTags.Add("已合master");
             });
         }
+        Task.WaitAll(tasks.ToArray());
         total = projectList.Count;
     }
 
@@ -547,6 +560,7 @@
         {
             _message.Success("切换成功");
             project.CurrentBranch = currentBranch;
+            project.CurrentBranchVersionName = project.CommonBranchList.FirstOrDefault(a => string.Equals(a.BranchName, branchName))?.VersionName ?? "";
 
             if (!project.CommonBranchList.Any(a => a.BranchName == branchName))
             {
@@ -771,13 +785,16 @@
         {
             try
             {
-                if (cookieModels == null)
-                    throw new Exception("未设置Cookie");
+                if (cookieModels == null && String.IsNullOrEmpty(setupModel.JiraApiToken))
+                    throw new Exception("未设置Cookie 或 Token");
 
-                var jiraIssueSearchDto = HttpHelper.Get<JiraIssueSearchDto>(new Uri(setupModel.JiraDomain), $"rest/api/2/search?jql=issuekey in ({string.Join(",", jiraIds)})", cookieModels, new Dictionary<string, string>(), new Dictionary<string, string>());
+                var headers = new Dictionary<string, string>();
+                headers.Add("Authorization", "Bearer " + setupModel.JiraApiToken);
+
+                var jiraIssueSearchDto = HttpHelper.Get<JiraIssueSearchDto>(new Uri(setupModel.JiraDomain), $"rest/api/2/search?jql=issuekey in ({string.Join(",", jiraIds)})", cookieModels, headers, new Dictionary<string, string>());
                 foreach (var jiraId in jiraIds)
                 {
-                    resDics.Add(jiraId, jiraIssueSearchDto.issues.FirstOrDefault(a => a.key == jiraId));
+                    resDics.Add(jiraId, jiraIssueSearchDto.issues.FirstOrDefault(a => a.key == jiraId) ?? new JiraIssueDto { fields = new JiraIssueFieldDto { summary = "不存在" } });
                 }
             }
             catch (Exception ex)

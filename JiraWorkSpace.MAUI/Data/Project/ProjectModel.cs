@@ -37,6 +37,12 @@ namespace JiraWorkSpace.MAUI.Data.Project
         public string CurrentBranch { get; set; }
 
         /// <summary>
+        /// 当前分支版本
+        /// </summary>
+        [DisplayName("当前分支版本")]
+        public string CurrentBranchVersionName { get; set; }
+
+        /// <summary>
         /// Git地址
         /// </summary>
         [DisplayName("Git地址")]
@@ -84,6 +90,9 @@ namespace JiraWorkSpace.MAUI.Data.Project
         /// </summary>
         [DisplayName("JiraId")]
         public string JiraId { get; set; }
+
+        [DisplayName("JiraDesc")]
+        public string JiraDesc { get; set; }
 
         public static string GetJiraId(string branchName, string jiraIdPrefix)
         {

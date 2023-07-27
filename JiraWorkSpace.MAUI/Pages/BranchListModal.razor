@@ -10,10 +10,11 @@
             ValueName="@nameof(BranchName.Name)"
             Placeholder="Select a Branch"
             DefaultActiveFirstItem="false"
+            AllowClear
             EnableSearch>
     </Select>
     <br />
-    <Input @bind-Value="@_selectedValue" Placeholder="BranchName" />
+    <Input @bind-Value="@_inputValue" Placeholder="BranchName" />
 </div>
 
 @code {
@@ -25,6 +26,7 @@
 
     List<BranchName> branchNameList;
     string _selectedValue;
+    string _inputValue;
     string codeDirectory;
 
     protected override void OnInitialized()
@@ -44,9 +46,11 @@
             await modalRef.UpdateConfigAsync();
         }
 
-        if (!string.IsNullOrWhiteSpace(_selectedValue))
+        string branchName = !string.IsNullOrWhiteSpace(_selectedValue) ? _selectedValue : _inputValue;
+
+        if (!string.IsNullOrWhiteSpace(branchName))
         {
-            await base.OkCancelRefWithResult!.OnOk(_selectedValue);
+            await base.OkCancelRefWithResult!.OnOk(branchName);
             await base.OnFeedbackOkAsync(args);
         }
     }

@@ -22,7 +22,7 @@ public static class MauiProgram
 
 		builder.Services.AddAntDesign();
 
-		HttpListenerService.Start();
+		//HttpListenerService.Start();
 
         return builder.Build();
 	}

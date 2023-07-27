@@ -77,7 +77,7 @@
         @context.BranchName &nbsp;
         @if (!string.IsNullOrEmpty(@context.JiraId) && setupModel != null)
         {
-            <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank">@context.JiraId</a>
+            <a href="@setupModel.JiraUrl(@context.JiraId)" target="_blank"><Tooltip Title="@context.JiraDesc">@context.JiraId</Tooltip></a>
         }
     </Column>
     <Column @bind-Field="@context.Remark" Sortable />
